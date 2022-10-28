@@ -3,6 +3,7 @@ import torch
 import random
 import numpy as np
 import argparse
+from scipy.special import softmax
 from help_functions import *
 from models import *
 from superposition import *
@@ -35,6 +36,7 @@ if __name__ == '__main__':
     element_wise = True     # if True, parameters in multi-head attention are superimposed element-wise
     restore_best_auroc = False
     do_early_stopping = True
+    threshold_accuracy = False
     stopping_criteria = 'auroc'  # possibilities: 'acc', 'auroc', 'auprc'
 
     batch_size = 128
@@ -115,6 +117,7 @@ if __name__ == '__main__':
         all_tasks_test_data = []
         contexts, layer_dimension = create_context_vectors(model, num_tasks, element_wise, use_PSP)
         task_epochs = []
+        acc_thresholds = []
 
         for t in range(num_tasks):
             print('- Task %d -' % (t + 1))
@@ -147,6 +150,24 @@ if __name__ == '__main__':
                     for j in range(X.shape[2]):
                         X[i, :, j] = X[i, :, j] * mask_i
 
+            '''
+            ### superimpose inputs
+            # # element-wise
+            # input_contexts = np.reshape(random_binary_array(X.size()[1] * X.size()[2]), newshape=(X.size()[1], X.size()[2])).astype(np.float32)
+            # for sample_idx in range(X.size()[0]):
+            #     X[sample_idx] = X[sample_idx] * input_contexts
+            # 
+            # # by words (256)
+            # input_contexts = torch.from_numpy(np.diag(random_binary_array(X.size()[1])).astype(np.float32))
+            # for sample_idx in range(X.size()[0]):
+            #     X[sample_idx] = torch.matmul(input_contexts, X[sample_idx])
+
+            # by word embedding (32)
+            input_contexts = torch.from_numpy(np.diag(random_binary_array(X.size()[2])).astype(np.float32))
+            for sample_idx in range(X.size()[0]):
+                X[sample_idx] = torch.matmul(X[sample_idx], input_contexts)
+            '''
+
             # split data into train, validation and test set
             y = torch.max(y, 1)[1]  # change one-hot-encoded vectors to numbers
             permutation = torch.randperm(X.size()[0])
@@ -155,6 +176,18 @@ if __name__ == '__main__':
             mask = mask[permutation]
             index_val = round(0.8 * len(permutation))
             index_test = round(0.9 * len(permutation))
+
+            # # calculate mean example for a specific task
+            # X_mean = torch.mean(X, dim=0)
+            # torch.save(X_mean, 'X_mean_%d.pt' % (t + 1))
+            # plt.imshow(X_mean[:100, :])
+            # plt.colorbar()
+            # plt.show()
+
+            # compare (by distance) all samples from a specific task to mean samples from all tasks
+            correct_share = nearest_task_mean_sample(X, [t] * len(X))
+            print('\nCorrect share of task IDs: ', round(correct_share, 3))
+
 
             X_train, y_train, mask_train = X[:index_val, :, :], y[:index_val], mask[:index_val, :]
             X_val, y_val, mask_val = X[index_val:index_test, :, :], y[index_val:index_test], mask[index_val:index_test, :]
@@ -229,9 +262,32 @@ if __name__ == '__main__':
                         early_stopping = (val_acc, val_auroc, val_auprc)
                     else:   # stop training
                         print('Early stopped - %s got worse in this epoch.' % stopping_criteria)
+
+                        if threshold_accuracy:
+                            # find the threshold with the best accuracy (on a second output neuron after softmax)
+                            outputs = torch.cat(val_outputs, dim=0)
+                            true = y_val.cpu().detach().numpy()
+                            thresholds = np.linspace(0, 1, 10001)
+                            highest_acc = 0
+                            best_threshold = 0
+                            for threshold in thresholds:
+                                softmax_outputs_1 = softmax(outputs.cpu().detach().numpy(), axis=1)[:, 1]
+                                predicted = np.zeros(len(softmax_outputs_1))
+                                predicted[softmax_outputs_1 > threshold] = 1
+                                acc = np.sum(true == predicted) / true.shape[0]
+                                if acc > highest_acc:
+                                    highest_acc = acc
+                                    best_threshold = threshold
+                            acc_threshold = best_threshold
+                        else:
+                            acc_threshold = 0.5
+                        print('Accuracy threshold: ', acc_threshold)
+                        acc_thresholds.append(acc_threshold)
+
                         task_epochs.append(epoch)
                         acc_e, auroc_e, auprc_e = evaluate_results(model, contexts, layer_dimension, all_tasks_test_data,
-                                                                   superposition, t, first_average, use_MLP, batch_size, use_PSP)
+                                                                   superposition, t, first_average, use_MLP, batch_size,
+                                                                   use_PSP, acc_thresholds=acc_thresholds)
                         acc_epoch[r, (t * num_epochs) + epoch] = acc_e
                         auroc_epoch[r, (t * num_epochs) + epoch] = auroc_e
                         auprc_epoch[r, (t * num_epochs) + epoch] = auprc_e

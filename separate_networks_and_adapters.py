@@ -10,7 +10,7 @@ from torch.utils.data import TensorDataset
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
-    parser.add_argument('--method', type=str, default='Upper_bound', choices=['Upper_bound', 'Lower_bound', 'Adapters'])
+    parser.add_argument('--method', type=str, default='Adapters', choices=['Upper_bound', 'Lower_bound', 'Adapters'])
     parser.add_argument('--num_runs', type=int, default=5)
     args, _ = parser.parse_known_args()
 
