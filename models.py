@@ -152,7 +152,9 @@ class MLP(nn.Module):
     def __init__(self, input_size, num_classes, use_PSP=False):
         super(MLP, self).__init__()
 
-        hidden_size = 41    # 41 - to match (or slightly increase) number of parameters in transformer model
+        # todo
+        # hidden_size = 41    # 41 - to match (or slightly increase) number of parameters in transformer model
+        hidden_size = 100
 
         if use_PSP:
             self.linear_1 = nn.Linear(input_size * 256, hidden_size)
@@ -166,7 +168,10 @@ class MLP(nn.Module):
             )
 
     def forward(self, input, use_PSP=False, contexts=None, task_id=None):
-        x = torch.flatten(input, start_dim=1, end_dim=2)
+        if input.ndim > 2:
+            x = torch.flatten(input, start_dim=1, end_dim=2)
+        else:
+            x = input
 
         if use_PSP:
             for i, lyr in enumerate(self.trainable_layers):

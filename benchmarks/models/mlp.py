@@ -33,6 +33,33 @@ class MLP(nn.Module):
         return x
 
 
+class MyMLPMoreDomains(nn.Module):
+
+    def __init__(self, input_size=32, num_classes=10):
+        super(MyMLPMoreDomains, self).__init__()
+
+        hidden_size = 100
+
+        self.linear = nn.Sequential(
+            nn.Linear(input_size * 256, hidden_size),   # 8192 -> 100
+            nn.ReLU()
+        )
+        self.last = nn.Linear(hidden_size, num_classes)  # 100 -> 10
+
+    def features(self, x):
+        x = self.linear(x)
+        return x
+
+    def logits(self, x):
+        x = self.last(x)
+        return x
+
+    def forward(self, x):
+        x = self.features(x)
+        x = self.logits(x)
+        return x
+
+
 class MyMLP(nn.Module):
 
     def __init__(self, input_size=32, num_classes=2):
@@ -128,6 +155,11 @@ class MyTransformerEncoderLayer(nn.Module):
         x = self.layer_norm(input + self.self_attention_block(input, src_key_padding_mask))   # self.norm1
         x = self.layer_norm(x + self.ff_block(x))   # self.norm2
         return x
+
+
+
+def myMLPmore_domains():
+    return MyMLPMoreDomains()
 
 
 def myMLP():

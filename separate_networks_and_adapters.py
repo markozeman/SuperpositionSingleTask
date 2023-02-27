@@ -6,11 +6,12 @@ from prepare_data import *
 from sklearn.metrics import roc_auc_score, classification_report, confusion_matrix
 from sklearn.preprocessing import StandardScaler
 from torch.utils.data import TensorDataset
+from Split_CIFAR_100_preparation import get_cifar_dataset
 
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
-    parser.add_argument('--method', type=str, default='Adapters', choices=['Upper_bound', 'Lower_bound', 'Adapters'])
+    parser.add_argument('--method', type=str, default='Lower_bound', choices=['Upper_bound', 'Lower_bound', 'Adapters'])
     parser.add_argument('--num_runs', type=int, default=5)
     args, _ = parser.parse_known_args()
 
@@ -24,7 +25,7 @@ if __name__ == '__main__':
                                 "mlp.2.weight", "mlp.2.bias"]
 
     first_average = 'average'     # show 'average' results until current task
-    use_MLP = False
+    # use_MLP = False
     use_mask = False
 
     # method options: 'adapters', 'upper bound' (use separate transformer networks for each task), 'lower bound' (use single transformer network for all tasks)
@@ -44,19 +45,27 @@ if __name__ == '__main__':
     standardize_input = False
     restore_best_auroc = False
     do_early_stopping = True
-    stopping_criteria = 'auroc'  # possibilities: 'acc', 'auroc', 'auprc'
+    stopping_criteria = 'acc'  # possibilities: 'acc', 'auroc', 'auprc'
 
     batch_size = 128
     num_runs = args.num_runs
-    num_tasks = 6
+    # num_tasks = 6
     num_epochs = 500 if method == 'adapters' else 50
     learning_rate = 0.001
 
-    task_names = [['HS', 'SA', 'S', 'SA_2', 'C', 'HD'],
-                  ['C', 'HD', 'SA', 'HS', 'SA_2', 'S'],
-                  ['SA', 'S', 'HS', 'SA_2', 'HD', 'C'],
-                  ['HD', 'SA_2', 'SA', 'C', 'S', 'HS'],
-                  ['SA', 'HS', 'C', 'SA_2', 'HD', 'S']]
+    # task_names = [['HS', 'SA', 'S', 'SA_2', 'C', 'HD'],
+    #               ['C', 'HD', 'SA', 'HS', 'SA_2', 'S'],
+    #               ['SA', 'S', 'HS', 'SA_2', 'HD', 'C'],
+    #               ['HD', 'SA_2', 'SA', 'C', 'S', 'HS'],
+    #               ['SA', 'HS', 'C', 'SA_2', 'HD', 'S']]
+
+    use_MLP = True
+    task_names = get_task_names('NLP first')
+    num_classes = 10
+    num_tasks = len(task_names[0])
+
+    if use_MLP:
+        split_cifar_100 = get_cifar_dataset('nn', (32, 32, 3))
 
     # Train model for 'num_runs' runs for 'num_tasks' tasks
     acc_arr = np.zeros((num_runs, num_tasks))
@@ -76,6 +85,9 @@ if __name__ == '__main__':
 
     for r in range(num_runs):
         print('- - Run %d - -' % (r + 1))
+
+        NLP_task_counter = 0   # set to None if all NLP tasks use just the first two neurons of the output layer, otherwise set to 0
+        CV_randomize_input = True   # if False, non-zero input is the first 3.072 neurons; if True, non-zero input is random 3.072 neurons (out of 8.192)
 
         start_time = time.time()
         previous_time = start_time
@@ -125,29 +137,64 @@ if __name__ == '__main__':
             best_auroc_val = 0
 
             # prepare data
-            X, y, mask = get_data(task_names[r][t])
+            if not task_names[r][t].startswith("CIF"):  # NLP tasks
+                X, y, mask = get_data(task_names[r][t])
 
-            if standardize_input:
-                for i in range(X.shape[0]):
-                    X[i, :, :] = torch.from_numpy(StandardScaler().fit_transform(X[i, :, :]))
+                if standardize_input:
+                    for i in range(X.shape[0]):
+                        X[i, :, :] = torch.from_numpy(StandardScaler().fit_transform(X[i, :, :]))
 
-                    # where samples are padded, make zeros again
-                    mask_i = torch.ones(X.shape[1]) - mask[i, :]
-                    for j in range(X.shape[2]):
-                        X[i, :, j] = X[i, :, j] * mask_i
+                        # where samples are padded, make zeros again
+                        mask_i = torch.ones(X.shape[1]) - mask[i, :]
+                        for j in range(X.shape[2]):
+                            X[i, :, j] = X[i, :, j] * mask_i
 
-            # split data into train, validation and test set
-            y = torch.max(y, 1)[1]  # change one-hot-encoded vectors to numbers
-            permutation = torch.randperm(X.size()[0])
-            X = X[permutation]
-            y = y[permutation]
-            mask = mask[permutation]
-            index_val = round(0.8 * len(permutation))
-            index_test = round(0.9 * len(permutation))
+                # split data into train, validation and test set
+                y = torch.max(y, 1)[1]  # change one-hot-encoded vectors to numbers
 
-            X_train, y_train, mask_train = X[:index_val, :, :], y[:index_val], mask[:index_val, :]
-            X_val, y_val, mask_val = X[index_val:index_test, :, :], y[index_val:index_test], mask[index_val:index_test, :]
-            X_test, y_test, mask_test = X[index_test:, :, :], y[index_test:], mask[index_test:, :]
+                if NLP_task_counter is not None:
+                    y = y + (2 * NLP_task_counter)      # each subsequent NLP task uses the next two neurons in the output layer
+                    NLP_task_counter += 1
+
+                permutation = torch.randperm(X.size()[0])
+                X = X[permutation]
+                y = y[permutation]
+                mask = mask[permutation]
+                index_val = round(0.8 * len(permutation))
+                index_test = round(0.9 * len(permutation))
+
+                X_train, y_train, mask_train = X[:index_val, :, :], y[:index_val], mask[:index_val, :]
+                X_val, y_val, mask_val = X[index_val:index_test, :, :], y[index_val:index_test], mask[index_val:index_test, :]
+                X_test, y_test, mask_test = X[index_test:, :, :], y[index_test:], mask[index_test:, :]
+
+            else:   # CV (Split CIFAR-100) tasks
+                split_id = int(task_names[r][t][3:]) - 1
+                X_train, y_train, X_test, y_test = split_cifar_100[split_id]
+
+                # pad X_train and X_test with zeros to the size 256x32=8192
+                X_train_zeros = np.zeros((X_train.shape[0], 8192 - X_train.shape[1]))
+                X_test_zeros = np.zeros((X_test.shape[0], 8192 - X_test.shape[1]))
+                X_train = torch.tensor(np.concatenate((X_train, X_train_zeros), axis=1)).float()
+                X_test = torch.tensor(np.concatenate((X_test, X_test_zeros), axis=1)).float()
+
+                if CV_randomize_input:
+                    input_permutation = torch.randperm(X_train.size()[1])
+                    X_train = X_train[:, input_permutation]
+                    X_test = X_test[:, input_permutation]
+
+                y_train = torch.max(y_train, 1)[1]  # change one-hot-encoded vectors to numbers
+                y_test = torch.max(y_test, 1)[1]  # change one-hot-encoded vectors to numbers
+                permutation = torch.randperm(X_train.size()[0])
+                X_train = X_train[permutation]
+                y_train = y_train[permutation]
+
+                mask_train_val = torch.FloatTensor([0] * len(X_train))  # only for the purpose of compatibility with transformer network
+                mask_test = torch.FloatTensor([0] * len(X_test))  # only for the purpose of compatibility with transformer network
+                index_val = round(0.9 * len(permutation))  # use 10% of test set as validation set
+
+                if use_MLP:
+                    X_val, y_val, mask_val = X_train[index_val:, :], y_train[index_val:], mask_train_val[index_val:]
+                    X_train, y_train, mask_train = X_train[:index_val, :], y_train[:index_val], mask_train_val[:index_val]
 
             train_dataset = TensorDataset(X_train, y_train, mask_train)
             val_dataset = TensorDataset(X_val, y_val, mask_val)
@@ -349,7 +396,7 @@ if __name__ == '__main__':
     '''
 
     show_only_accuracy = False
-    min_y = 50
+    min_y = 0
     colors = ['tab:blue', 'tab:orange', 'tab:green']
     if do_early_stopping:
         vertical_lines_x = []

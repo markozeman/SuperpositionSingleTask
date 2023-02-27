@@ -12,11 +12,12 @@ from torchinfo import summary
 from sklearn.metrics import roc_auc_score, classification_report, confusion_matrix
 from sklearn.preprocessing import StandardScaler
 from torch.utils.data import TensorDataset
+from Split_CIFAR_100_preparation import get_cifar_dataset
 
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
-    parser.add_argument('--method', type=str, default='SuperFormer', choices=['SuperFormer', 'PSP'])
+    parser.add_argument('--method', type=str, default='PSP', choices=['SuperFormer', 'PSP'])
     parser.add_argument('--num_runs', type=int, default=5)
     args, _ = parser.parse_known_args()
 
@@ -24,32 +25,40 @@ if __name__ == '__main__':
     superposition_each_epoch = False
     first_average = 'average'     # show results on 'first' task or the 'average' results until current task
 
-    use_MLP = False      # if True use MLP, else use Transformer
+    use_MLP = True      # if True use MLP, else use Transformer
     use_mask = False     # if True use masking in Transformer, else do not use masks
     use_PSP = True if args.method == 'PSP' else False
     input_size = 32
     num_heads = 4
     num_layers = 1      # number of transformer encoder layers
     dim_feedforward = 1024
-    num_classes = 2
+    # num_classes = 2
     standardize_input = False
     element_wise = True     # if True, parameters in multi-head attention are superimposed element-wise
     restore_best_auroc = False
     do_early_stopping = True
     threshold_accuracy = False
-    stopping_criteria = 'auroc'  # possibilities: 'acc', 'auroc', 'auprc'
+    stopping_criteria = 'acc'  # possibilities: 'acc', 'auroc', 'auprc'
 
     batch_size = 128
     num_runs = args.num_runs
-    num_tasks = 6
+    # num_tasks = 6
     num_epochs = 50
     learning_rate = 0.001
 
-    task_names = [['HS', 'SA', 'S', 'SA_2', 'C', 'HD'],
-                  ['C', 'HD', 'SA', 'HS', 'SA_2', 'S'],
-                  ['SA', 'S', 'HS', 'SA_2', 'HD', 'C'],
-                  ['HD', 'SA_2', 'SA', 'C', 'S', 'HS'],
-                  ['SA', 'HS', 'C', 'SA_2', 'HD', 'S']]
+    task_names = get_task_names('mixed')
+
+    # task_names = [['HS', 'SA', 'S', 'SA_2', 'C', 'HD'],
+    #               ['C', 'HD', 'SA', 'HS', 'SA_2', 'S'],
+    #               ['SA', 'S', 'HS', 'SA_2', 'HD', 'C'],
+    #               ['HD', 'SA_2', 'SA', 'C', 'S', 'HS'],
+    #               ['SA', 'HS', 'C', 'SA_2', 'HD', 'S']]
+
+    num_classes = 10
+    num_tasks = len(task_names[0])
+
+    if use_MLP:
+        split_cifar_100 = get_cifar_dataset('nn', (32, 32, 3))
 
     ### Preprocess data for all six task with Word2Vec
     # # save X, y, mask for all 6 datasets
@@ -103,6 +112,9 @@ if __name__ == '__main__':
     for r in range(num_runs):
         print('- - Run %d - -' % (r + 1))
 
+        NLP_task_counter = 0   # set to None if all NLP tasks use just the first two neurons of the output layer, otherwise set to 0
+        CV_randomize_input = True   # if False, non-zero input is the first 3.072 neurons; if True, non-zero input is random 3.072 neurons (out of 8.192)
+
         # np.random.seed(seed)
         start_time = time.time()
         previous_time = start_time
@@ -139,59 +151,97 @@ if __name__ == '__main__':
             best_auroc_val = 0
 
             # prepare data
-            X, y, mask = get_data(task_names[r][t])
+            if not task_names[r][t].startswith("CIF"):      # NLP tasks
+                X, y, mask = get_data(task_names[r][t])
 
-            if standardize_input:
-                for i in range(X.shape[0]):
-                    X[i, :, :] = torch.from_numpy(StandardScaler().fit_transform(X[i, :, :]))
+                # # pad y with zeros to the size 10 (as in Split CIFAR-100)
+                # y_zeros = np.zeros((y.shape[0], 10 - y.shape[1]))
+                # y = np.concatenate((y, y_zeros), axis=1)
 
-                    # where samples are padded, make zeros again
-                    mask_i = torch.ones(X.shape[1]) - mask[i, :]
-                    for j in range(X.shape[2]):
-                        X[i, :, j] = X[i, :, j] * mask_i
+                if standardize_input:
+                    for i in range(X.shape[0]):
+                        X[i, :, :] = torch.from_numpy(StandardScaler().fit_transform(X[i, :, :]))
 
-            '''
-            ### superimpose inputs
-            # # element-wise
-            # input_contexts = np.reshape(random_binary_array(X.size()[1] * X.size()[2]), newshape=(X.size()[1], X.size()[2])).astype(np.float32)
-            # for sample_idx in range(X.size()[0]):
-            #     X[sample_idx] = X[sample_idx] * input_contexts
-            # 
-            # # by words (256)
-            # input_contexts = torch.from_numpy(np.diag(random_binary_array(X.size()[1])).astype(np.float32))
-            # for sample_idx in range(X.size()[0]):
-            #     X[sample_idx] = torch.matmul(input_contexts, X[sample_idx])
+                        # where samples are padded, make zeros again
+                        mask_i = torch.ones(X.shape[1]) - mask[i, :]
+                        for j in range(X.shape[2]):
+                            X[i, :, j] = X[i, :, j] * mask_i
 
-            # by word embedding (32)
-            input_contexts = torch.from_numpy(np.diag(random_binary_array(X.size()[2])).astype(np.float32))
-            for sample_idx in range(X.size()[0]):
-                X[sample_idx] = torch.matmul(X[sample_idx], input_contexts)
-            '''
+                '''
+                ### superimpose inputs
+                # # element-wise
+                # input_contexts = np.reshape(random_binary_array(X.size()[1] * X.size()[2]), newshape=(X.size()[1], X.size()[2])).astype(np.float32)
+                # for sample_idx in range(X.size()[0]):
+                #     X[sample_idx] = X[sample_idx] * input_contexts
+                # 
+                # # by words (256)
+                # input_contexts = torch.from_numpy(np.diag(random_binary_array(X.size()[1])).astype(np.float32))
+                # for sample_idx in range(X.size()[0]):
+                #     X[sample_idx] = torch.matmul(input_contexts, X[sample_idx])
+    
+                # by word embedding (32)
+                input_contexts = torch.from_numpy(np.diag(random_binary_array(X.size()[2])).astype(np.float32))
+                for sample_idx in range(X.size()[0]):
+                    X[sample_idx] = torch.matmul(X[sample_idx], input_contexts)
+                '''
 
-            # split data into train, validation and test set
-            y = torch.max(y, 1)[1]  # change one-hot-encoded vectors to numbers
-            permutation = torch.randperm(X.size()[0])
-            X = X[permutation]
-            y = y[permutation]
-            mask = mask[permutation]
-            index_val = round(0.8 * len(permutation))
-            index_test = round(0.9 * len(permutation))
+                # split data into train, validation and test set
+                y = torch.max(y, 1)[1]  # change one-hot-encoded vectors to numbers
 
-            # # calculate mean example for a specific task
-            # X_mean = torch.mean(X, dim=0)
-            # torch.save(X_mean, 'X_mean_%d.pt' % (t + 1))
-            # plt.imshow(X_mean[:100, :])
-            # plt.colorbar()
-            # plt.show()
+                if NLP_task_counter is not None:
+                    y = y + (2 * NLP_task_counter)      # each subsequent NLP task uses the next two neurons in the output layer
+                    NLP_task_counter += 1
 
-            # compare (by distance) all samples from a specific task to mean samples from all tasks
-            correct_share = nearest_task_mean_sample(X, [t] * len(X))
-            print('\nCorrect share of task IDs: ', round(correct_share, 3))
+                permutation = torch.randperm(X.size()[0])
+                X = X[permutation]
+                y = y[permutation]
+                mask = mask[permutation]
+                index_val = round(0.8 * len(permutation))
+                index_test = round(0.9 * len(permutation))
 
+                # # calculate mean example for a specific task
+                # X_mean = torch.mean(X, dim=0)
+                # torch.save(X_mean, 'X_mean_%d.pt' % (t + 1))
+                # plt.imshow(X_mean[:100, :])
+                # plt.colorbar()
+                # plt.show()
 
-            X_train, y_train, mask_train = X[:index_val, :, :], y[:index_val], mask[:index_val, :]
-            X_val, y_val, mask_val = X[index_val:index_test, :, :], y[index_val:index_test], mask[index_val:index_test, :]
-            X_test, y_test, mask_test = X[index_test:, :, :], y[index_test:], mask[index_test:, :]
+                # # compare (by distance) all samples from a specific task to mean samples from all tasks
+                # correct_share = nearest_task_mean_sample(X, [t] * len(X))
+                # print('\nCorrect share of task IDs: ', round(correct_share, 3))
+
+                X_train, y_train, mask_train = X[:index_val, :, :], y[:index_val], mask[:index_val, :]
+                X_val, y_val, mask_val = X[index_val:index_test, :, :], y[index_val:index_test], mask[index_val:index_test, :]
+                X_test, y_test, mask_test = X[index_test:, :, :], y[index_test:], mask[index_test:, :]
+
+            else:   # CV (Split CIFAR-100) tasks
+                split_id = int(task_names[r][t][3:]) - 1
+                X_train, y_train, X_test, y_test = split_cifar_100[split_id]
+
+                # pad X_train and X_test with zeros to the size 256x32=8192
+                X_train_zeros = np.zeros((X_train.shape[0], 8192 - X_train.shape[1]))
+                X_test_zeros = np.zeros((X_test.shape[0], 8192 - X_test.shape[1]))
+                X_train = torch.tensor(np.concatenate((X_train, X_train_zeros), axis=1)).float()
+                X_test = torch.tensor(np.concatenate((X_test, X_test_zeros), axis=1)).float()
+
+                if CV_randomize_input:
+                    input_permutation = torch.randperm(X_train.size()[1])
+                    X_train = X_train[:, input_permutation]
+                    X_test = X_test[:, input_permutation]
+
+                y_train = torch.max(y_train, 1)[1]  # change one-hot-encoded vectors to numbers
+                y_test = torch.max(y_test, 1)[1]  # change one-hot-encoded vectors to numbers
+                permutation = torch.randperm(X_train.size()[0])
+                X_train = X_train[permutation]
+                y_train = y_train[permutation]
+
+                mask_train_val = torch.FloatTensor([0] * len(X_train))  # only for the purpose of compatibility with transformer network
+                mask_test = torch.FloatTensor([0] * len(X_test))  # only for the purpose of compatibility with transformer network
+                index_val = round(0.9 * len(permutation))  # use 10% of test set as validation set
+
+                if use_MLP:
+                    X_val, y_val, mask_val = X_train[index_val:, :], y_train[index_val:], mask_train_val[index_val:]
+                    X_train, y_train, mask_train = X_train[:index_val, :], y_train[:index_val], mask_train_val[:index_val]
 
             train_dataset = TensorDataset(X_train, y_train, mask_train)
             val_dataset = TensorDataset(X_val, y_val, mask_val)
@@ -280,9 +330,11 @@ if __name__ == '__main__':
                                     best_threshold = threshold
                             acc_threshold = best_threshold
                         else:
-                            acc_threshold = 0.5
+                            # acc_threshold = 0.5
+                            acc_threshold = None
+
                         print('Accuracy threshold: ', acc_threshold)
-                        acc_thresholds.append(acc_threshold)
+                        acc_thresholds.append(acc_threshold)    # 'acc_thresholds' expects all tasks to stop early
 
                         task_epochs.append(epoch)
                         acc_e, auroc_e, auprc_e = evaluate_results(model, contexts, layer_dimension, all_tasks_test_data,
@@ -399,7 +451,7 @@ if __name__ == '__main__':
         print('Task %d - AUPRC    = %.1f +/- %.1f' % (t+1, mean_auprc[t], std_auprc[t]))
 
     show_only_accuracy = False
-    min_y = 50
+    min_y = 0
     colors = ['tab:blue', 'tab:orange', 'tab:green']
     if do_early_stopping:
         vertical_lines_x = []

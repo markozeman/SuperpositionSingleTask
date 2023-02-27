@@ -54,8 +54,16 @@ def get_stats(outputs, y, acc_threshold=None):
     probs = torch.squeeze(torch.softmax(outputs, dim=1))
     probs = probs.cpu().detach().numpy()
     true = y.cpu().detach().numpy()
-    auroc = roc_auc_score(true, probs[:, 1])
-    auprc = average_precision_score(true, probs[:, 1])
+    try:
+        auroc = roc_auc_score(true, probs[:, 1])
+        auprc = average_precision_score(true, probs[:, 1])
+
+        # todo: delete below 2 lines when not mixing tasks from different domains
+        auroc = -1
+        auprc = -1
+    except ValueError as ve:  # for multi-class classification we calculate only accuracy
+        auroc = -1
+        auprc = -1
 
     if acc_threshold is None:
         predicted = np.argmax(outputs.cpu().detach().numpy(), axis=1).ravel()
@@ -146,5 +154,34 @@ def nearest_task_mean_sample(samples, true_task_IDs):
         if pred == tru:
             correct += 1
     return correct / len(samples)
+
+
+def get_task_names(mode):
+    """
+    Get list with the order of tasks based on the selected mode.
+
+    :param mode: string to select mode, options: 'NLP first', 'CV first' or 'mixed'
+    :return: 2D list of task names in short
+    """
+    if mode == 'NLP first':
+        task_names = [['HS', 'SA', 'S', 'SA_2', 'C', 'CIF1', 'CIF2', 'CIF3', 'CIF4', 'CIF5'],
+                      ['C', 'HD', 'SA', 'HS', 'SA_2', 'CIF1', 'CIF2', 'CIF3', 'CIF4', 'CIF5'],
+                      ['SA', 'S', 'HS', 'SA_2', 'HD', 'CIF1', 'CIF2', 'CIF3', 'CIF4', 'CIF5'],
+                      ['HD', 'SA_2', 'SA', 'C', 'S', 'CIF1', 'CIF2', 'CIF3', 'CIF4', 'CIF5'],
+                      ['SA', 'HS', 'C', 'SA_2', 'HD', 'CIF1', 'CIF2', 'CIF3', 'CIF4', 'CIF5']]
+    elif mode == 'CV first':
+        task_names = [['CIF1', 'CIF2', 'CIF3', 'CIF4', 'CIF5', 'HS', 'SA', 'S', 'SA_2', 'C'],
+                      ['CIF1', 'CIF2', 'CIF3', 'CIF4', 'CIF5', 'C', 'HD', 'SA', 'HS', 'SA_2'],
+                      ['CIF1', 'CIF2', 'CIF3', 'CIF4', 'CIF5', 'SA', 'S', 'HS', 'SA_2', 'HD'],
+                      ['CIF1', 'CIF2', 'CIF3', 'CIF4', 'CIF5', 'HD', 'SA_2', 'SA', 'C', 'S'],
+                      ['CIF1', 'CIF2', 'CIF3', 'CIF4', 'CIF5', 'SA', 'HS', 'C', 'SA_2', 'HD']]
+    elif mode == 'mixed':
+        task_names = [['HS', 'CIF1', 'SA', 'CIF2', 'S', 'CIF3', 'SA_2', 'CIF4', 'C', 'CIF5'],
+                      ['C', 'CIF1', 'HD', 'CIF2', 'SA', 'CIF3', 'HS', 'CIF4', 'SA_2', 'CIF5'],
+                      ['SA', 'CIF1', 'S', 'CIF2', 'HS', 'CIF3', 'SA_2', 'CIF4', 'HD', 'CIF5'],
+                      ['HD', 'CIF1', 'SA_2', 'CIF2', 'SA', 'CIF3', 'C', 'CIF4', 'S', 'CIF5'],
+                      ['SA', 'CIF1', 'HS', 'CIF2', 'C', 'CIF3', 'SA_2', 'CIF4', 'HD', 'CIF5']]
+
+    return task_names
 
 
