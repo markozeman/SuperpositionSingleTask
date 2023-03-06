@@ -11,7 +11,7 @@ from Split_CIFAR_100_preparation import get_cifar_dataset
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
-    parser.add_argument('--method', type=str, default='Lower_bound', choices=['Upper_bound', 'Lower_bound', 'Adapters'])
+    parser.add_argument('--method', type=str, default='Upper_bound', choices=['Upper_bound', 'Lower_bound', 'Adapters'])
     parser.add_argument('--num_runs', type=int, default=5)
     args, _ = parser.parse_known_args()
 
@@ -60,7 +60,7 @@ if __name__ == '__main__':
     #               ['SA', 'HS', 'C', 'SA_2', 'HD', 'S']]
 
     use_MLP = True
-    task_names = get_task_names('NLP first')
+    task_names = get_task_names('Split CIFAR-100')
     num_classes = 10
     num_tasks = len(task_names[0])
 

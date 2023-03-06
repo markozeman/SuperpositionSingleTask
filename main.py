@@ -17,7 +17,7 @@ from Split_CIFAR_100_preparation import get_cifar_dataset
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
-    parser.add_argument('--method', type=str, default='PSP', choices=['SuperFormer', 'PSP'])
+    parser.add_argument('--method', type=str, default='SuperFormer', choices=['SuperFormer', 'PSP'])
     parser.add_argument('--num_runs', type=int, default=5)
     args, _ = parser.parse_known_args()
 
@@ -46,7 +46,7 @@ if __name__ == '__main__':
     num_epochs = 50
     learning_rate = 0.001
 
-    task_names = get_task_names('mixed')
+    task_names = get_task_names('Split CIFAR-100')
 
     # task_names = [['HS', 'SA', 'S', 'SA_2', 'C', 'HD'],
     #               ['C', 'HD', 'SA', 'HS', 'SA_2', 'S'],

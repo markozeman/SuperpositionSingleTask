@@ -160,7 +160,7 @@ def get_task_names(mode):
     """
     Get list with the order of tasks based on the selected mode.
 
-    :param mode: string to select mode, options: 'NLP first', 'CV first' or 'mixed'
+    :param mode: string to select mode, options: 'NLP first', 'CV first', 'mixed', 'Split CIFAR-100'
     :return: 2D list of task names in short
     """
     if mode == 'NLP first':
@@ -181,6 +181,12 @@ def get_task_names(mode):
                       ['SA', 'CIF1', 'S', 'CIF2', 'HS', 'CIF3', 'SA_2', 'CIF4', 'HD', 'CIF5'],
                       ['HD', 'CIF1', 'SA_2', 'CIF2', 'SA', 'CIF3', 'C', 'CIF4', 'S', 'CIF5'],
                       ['SA', 'CIF1', 'HS', 'CIF2', 'C', 'CIF3', 'SA_2', 'CIF4', 'HD', 'CIF5']]
+    elif mode == 'Split CIFAR-100':
+        task_names = [['CIF1', 'CIF2', 'CIF3', 'CIF4', 'CIF5', 'CIF6', 'CIF7', 'CIF8', 'CIF9', 'CIF10'],
+                      ['CIF1', 'CIF2', 'CIF3', 'CIF4', 'CIF5', 'CIF6', 'CIF7', 'CIF8', 'CIF9', 'CIF10'],
+                      ['CIF1', 'CIF2', 'CIF3', 'CIF4', 'CIF5', 'CIF6', 'CIF7', 'CIF8', 'CIF9', 'CIF10'],
+                      ['CIF1', 'CIF2', 'CIF3', 'CIF4', 'CIF5', 'CIF6', 'CIF7', 'CIF8', 'CIF9', 'CIF10'],
+                      ['CIF1', 'CIF2', 'CIF3', 'CIF4', 'CIF5', 'CIF6', 'CIF7', 'CIF8', 'CIF9', 'CIF10']]
 
     return task_names
 

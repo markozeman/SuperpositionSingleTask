@@ -234,7 +234,7 @@ def get_args(argv):
     parser.add_argument('--repeat', type=int, default=1, help="Repeat the experiment N times")
     parser.add_argument('--incremental_class', dest='incremental_class', default=False, action='store_true',
                         help="The number of output node in the single-headed model increases along with new categories.")
-    parser.add_argument('--method', type=str, default='GEM_Small', choices=['EWC', 'Online_EWC', 'SI', 'MAS', 'GEM_Large', 'GEM_Small'])
+    parser.add_argument('--method', type=str, default='EWC', choices=['EWC', 'Online_EWC', 'SI', 'MAS', 'GEM_Large', 'GEM_Small'])
     parser.add_argument('--num_runs', type=int, default=5)
     args = parser.parse_args(argv)
     return args
@@ -295,7 +295,7 @@ if __name__ == '__main__':
         #                    ['HD', 'SA_2', 'SA', 'C', 'S', 'HS'],
         #                    ['SA', 'HS', 'C', 'SA_2', 'HD', 'S']]
 
-        runs_task_names = get_task_names('mixed')
+        runs_task_names = get_task_names('CV first')
         num_tasks = len(runs_task_names[0])
         times_per_task = np.zeros((args.repeat, num_tasks))
 
