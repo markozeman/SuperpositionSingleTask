@@ -37,6 +37,13 @@ def plot_multiple_histograms(data, num_tasks, metrics, title, colors, y_label, y
         'auprc': 'AUPRC'
     }
 
+    # if you want separate average accuracies for NLP tasks only, CV tasks only and both, uncomment the lines below
+    metrics_names = {
+        'acc': 'NLP only average',
+        'auroc': 'CV only average',
+        'auprc': 'Total average'
+    }
+
     font = {'size': 20}
     plt.rc('font', **font)
     plt.grid(axis='y')

@@ -60,7 +60,8 @@ if __name__ == '__main__':
     #               ['SA', 'HS', 'C', 'SA_2', 'HD', 'S']]
 
     use_MLP = True
-    task_names = get_task_names('Split CIFAR-100')
+    task_names_string = 'mixed'
+    task_names = get_task_names(task_names_string)
     num_classes = 10
     num_tasks = len(task_names[0])
 

@@ -46,7 +46,8 @@ if __name__ == '__main__':
     num_epochs = 50
     learning_rate = 0.001
 
-    task_names = get_task_names('Split CIFAR-100')
+    task_names_string = 'mixed'
+    task_names = get_task_names(task_names_string)
 
     # task_names = [['HS', 'SA', 'S', 'SA_2', 'C', 'HD'],
     #               ['C', 'HD', 'SA', 'HS', 'SA_2', 'S'],
@@ -339,7 +340,8 @@ if __name__ == '__main__':
                         task_epochs.append(epoch)
                         acc_e, auroc_e, auprc_e = evaluate_results(model, contexts, layer_dimension, all_tasks_test_data,
                                                                    superposition, t, first_average, use_MLP, batch_size,
-                                                                   use_PSP, acc_thresholds=acc_thresholds)
+                                                                   use_PSP, acc_thresholds=acc_thresholds,
+                                                                   task_names_string=task_names_string)
                         acc_epoch[r, (t * num_epochs) + epoch] = acc_e
                         auroc_epoch[r, (t * num_epochs) + epoch] = auroc_e
                         auprc_epoch[r, (t * num_epochs) + epoch] = auprc_e
@@ -349,7 +351,8 @@ if __name__ == '__main__':
                 if superposition_each_epoch or (epoch == num_epochs - 1):   # calculate results for each epoch or only the last epoch in task
                     task_epochs.append(epoch)
                     acc_e, auroc_e, auprc_e = evaluate_results(model, contexts, layer_dimension, all_tasks_test_data,
-                                                               superposition, t, first_average, use_MLP, batch_size, use_PSP)
+                                                               superposition, t, first_average, use_MLP, batch_size,
+                                                               use_PSP, task_names_string=task_names_string)
                 else:
                     acc_e, auroc_e, auprc_e = 0, 0, 0
 
@@ -526,7 +529,7 @@ if __name__ == '__main__':
         end_performance[i]['std_auroc'] = std_auroc[index]
         end_performance[i]['std_auprc'] = std_auprc[index]
 
-    metrics = ['acc', 'auroc', 'auprc']    # possibilities: 'acc', 'auroc', 'auprc'
+    metrics = ['acc', 'auroc', 'auprc']
     print('\n\nMetrics at the end of each task training:\n', end_performance)
     plot_multiple_histograms(end_performance, num_tasks, metrics,
                              '#runs: %d, %s task results, %s model, %s, el.-wise=%s, %s' % (num_runs, first_average,

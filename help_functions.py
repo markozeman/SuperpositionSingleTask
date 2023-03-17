@@ -181,6 +181,12 @@ def get_task_names(mode):
                       ['SA', 'CIF1', 'S', 'CIF2', 'HS', 'CIF3', 'SA_2', 'CIF4', 'HD', 'CIF5'],
                       ['HD', 'CIF1', 'SA_2', 'CIF2', 'SA', 'CIF3', 'C', 'CIF4', 'S', 'CIF5'],
                       ['SA', 'CIF1', 'HS', 'CIF2', 'C', 'CIF3', 'SA_2', 'CIF4', 'HD', 'CIF5']]
+    elif mode == 'fixed NLP first':
+        task_names = [['HS', 'SA', 'S', 'SA_2', 'C', 'CIF1', 'CIF2', 'CIF3', 'CIF4', 'CIF5']] * 5
+    elif mode == 'fixed CV first':
+        task_names = [['CIF1', 'CIF2', 'CIF3', 'CIF4', 'CIF5', 'HS', 'SA', 'S', 'SA_2', 'C']] * 5
+    elif mode == 'fixed mixed':
+        task_names = [['HS', 'CIF1', 'SA', 'CIF2', 'S', 'CIF3', 'SA_2', 'CIF4', 'C', 'CIF5']] * 5
     elif mode == 'Split CIFAR-100':
         task_names = [['CIF1', 'CIF2', 'CIF3', 'CIF4', 'CIF5', 'CIF6', 'CIF7', 'CIF8', 'CIF9', 'CIF10'],
                       ['CIF1', 'CIF2', 'CIF3', 'CIF4', 'CIF5', 'CIF6', 'CIF7', 'CIF8', 'CIF9', 'CIF10'],

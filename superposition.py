@@ -153,7 +153,8 @@ def context_multiplication(model, contexts, layer_dimension, task_index, adapter
 
 
 def evaluate_results(model, contexts, layer_dimension, all_tasks_test_data, superposition, task_index, first_average,
-                     use_MLP, batch_size, use_PSP=False, adapter_trainable_layers=None, acc_thresholds=None):
+                     use_MLP, batch_size, use_PSP=False, adapter_trainable_layers=None, acc_thresholds=None,
+                     task_names_string=None):
     """
     Evaluate the results on test data with or without using superposition. Return accuracy, AUROC and AUPRC.
 
@@ -169,6 +170,8 @@ def evaluate_results(model, contexts, layer_dimension, all_tasks_test_data, supe
     :param use_PSP: boolean - if True, PSP method is used, meaning we need set of contexts for each task (including the first)
     :param adapter_trainable_layers: list of strings with the names of trainable adapter layers
     :param acc_thresholds: optional list of parameters to set threshold for a second neuron to improve model accuracy
+    :param task_names_string: the order of learning tasks: 'NLP first', 'CV first', 'mixed', 'fixed NLP first',
+                              'fixed CV first', 'fixed mixed' or 'Split CIFAR-100'
     :return: accuracy, AUROC, AUPRC
     """
     if superposition:   # superposition used
@@ -190,7 +193,7 @@ def evaluate_results(model, contexts, layer_dimension, all_tasks_test_data, supe
                 return evaluate_tasks_average_PSP(model, all_tasks_test_data, contexts, layer_dimension, task_index, use_MLP)
             else:
                 return evaluate_tasks_average(model, all_tasks_test_data, contexts, layer_dimension, superposition, task_index,
-                                              use_MLP, batch_size, adapter_trainable_layers, acc_thresholds)
+                                              use_MLP, batch_size, adapter_trainable_layers, acc_thresholds, task_names_string)
         else:
             raise ValueError('The value of "first_average" has to be string "first" or "average".')
     else:   # superposition not used
@@ -273,7 +276,7 @@ def evaluate_current_task_PSP(model, all_tasks_test_data, task_index, use_MLP, c
 
 
 def evaluate_tasks_average(model, all_tasks_test_data, contexts, layer_dimension, superposition, task_index, use_MLP,
-                           batch_size, adapter_trainable_layers=None, acc_thresholds=None):
+                           batch_size, adapter_trainable_layers=None, acc_thresholds=None, task_names_string=None):
     """
     Evaluate average results until the current task, using the current model.
 
@@ -287,6 +290,8 @@ def evaluate_tasks_average(model, all_tasks_test_data, contexts, layer_dimension
     :param batch_size: batch size
     :param adapter_trainable_layers: list of strings with the names of trainable adapter layers
     :param acc_thresholds: optional list of parameters to set threshold for a second neuron to improve model accuracy
+    :param task_names_string: the order of learning tasks: 'NLP first', 'CV first', 'mixed', 'fixed NLP first',
+                              'fixed CV first', 'fixed mixed' or 'Split CIFAR-100'
     :return: mean accuracy, mean AUROC, mean AUPRC (across tasks)
     """
     accs, aurocs, auprcs = [], [], []
@@ -312,7 +317,17 @@ def evaluate_tasks_average(model, all_tasks_test_data, contexts, layer_dimension
             accs.append(acc)
             aurocs.append(auroc)
             auprcs.append(auprc)
-    return np.mean(accs), np.mean(aurocs), np.mean(auprcs)
+
+    # return np.mean(accs), np.mean(aurocs), np.mean(auprcs)
+
+    # use the lines below (instead of the return above) if you want to know the average accuracy for NLP, CV and both, respectively
+    accs.reverse()  # since accuracies are calculated from the last to the first task
+    if task_names_string == 'NLP first' or task_names_string == 'fixed NLP first':
+        return np.mean(accs[:5]), np.mean(accs[5:]), np.mean(accs)
+    elif task_names_string == 'CV first' or task_names_string == 'fixed CV first':
+        return np.mean(accs[5:]), np.mean(accs[:5]), np.mean(accs)
+    elif task_names_string == 'mixed' or task_names_string == 'fixed mixed':
+        return np.mean(accs[::2]), np.mean(accs[1::2]), np.mean(accs)
 
 
 def evaluate_tasks_average_more_SuperAdapters(model, all_tasks_test_data, contexts, layer_dimension,
