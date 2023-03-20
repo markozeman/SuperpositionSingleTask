@@ -46,7 +46,7 @@ if __name__ == '__main__':
     num_epochs = 50
     learning_rate = 0.001
 
-    task_names_string = 'mixed'
+    task_names_string = 'fixed mixed'
     task_names = get_task_names(task_names_string)
 
     # task_names = [['HS', 'SA', 'S', 'SA_2', 'C', 'HD'],
@@ -102,6 +102,8 @@ if __name__ == '__main__':
     acc_epoch = np.zeros((num_runs, num_tasks * num_epochs))
     auroc_epoch = np.zeros((num_runs, num_tasks * num_epochs))
     auprc_epoch = np.zeros((num_runs, num_tasks * num_epochs))
+
+    all_tasks_accuracies = np.zeros((num_runs, num_tasks, num_tasks))
 
     device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
     torch.cuda.empty_cache()
@@ -338,21 +340,23 @@ if __name__ == '__main__':
                         acc_thresholds.append(acc_threshold)    # 'acc_thresholds' expects all tasks to stop early
 
                         task_epochs.append(epoch)
-                        acc_e, auroc_e, auprc_e = evaluate_results(model, contexts, layer_dimension, all_tasks_test_data,
+                        acc_e, auroc_e, auprc_e, all_accuracies = evaluate_results(model, contexts, layer_dimension, all_tasks_test_data,
                                                                    superposition, t, first_average, use_MLP, batch_size,
                                                                    use_PSP, acc_thresholds=acc_thresholds,
                                                                    task_names_string=task_names_string)
                         acc_epoch[r, (t * num_epochs) + epoch] = acc_e
                         auroc_epoch[r, (t * num_epochs) + epoch] = auroc_e
                         auprc_epoch[r, (t * num_epochs) + epoch] = auprc_e
+                        all_tasks_accuracies[r, t, :t+1] = all_accuracies
                         break
 
                 # track results with or without superposition
                 if superposition_each_epoch or (epoch == num_epochs - 1):   # calculate results for each epoch or only the last epoch in task
                     task_epochs.append(epoch)
-                    acc_e, auroc_e, auprc_e = evaluate_results(model, contexts, layer_dimension, all_tasks_test_data,
+                    acc_e, auroc_e, auprc_e, all_accuracies = evaluate_results(model, contexts, layer_dimension, all_tasks_test_data,
                                                                superposition, t, first_average, use_MLP, batch_size,
                                                                use_PSP, task_names_string=task_names_string)
+                    all_tasks_accuracies[r, t, :t+1] = all_accuracies
                 else:
                     acc_e, auroc_e, auprc_e = 0, 0, 0
 
@@ -537,4 +541,6 @@ if __name__ == '__main__':
                              str(element_wise) if superposition and not use_MLP else '/', 'ES' if do_early_stopping else 'no ES'),
                              colors[:len(metrics)], 'Metric value', min_y)
 
-
+    all_tasks_accuracies_mean = np.mean(all_tasks_accuracies, axis=0)
+    all_tasks_accuracies_std = np.std(all_tasks_accuracies, axis=0)
+    plot_accuracies_all_tasks((all_tasks_accuracies_mean, all_tasks_accuracies_std), num_tasks, task_names_string)

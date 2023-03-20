@@ -1,4 +1,5 @@
 import math
+import numpy as np
 import matplotlib.pyplot as plt
 
 
@@ -199,4 +200,67 @@ def plot_heatmap(data, full_value):
     plt.xlabel('last ablated layer')
     plt.ylabel('first ablated layer')
     plt.show()
+
+
+def plot_accuracies_all_tasks(data, num_tasks, title):
+    """
+    Plot accuracies of all previous tasks like vertical bars.
+
+    :param data: (all_tasks_accuracies_mean, all_tasks_accuracies_std), both are (num_tasks x num_tasks) lower triangular matrices
+    :param num_tasks: number of tasks trained
+    :param title: plot title (string)
+    :return: None
+
+    """
+    font = {'size': 15}
+    plt.rc('font', **font)
+
+    # create 10 sections with varying number of bars
+    sections = []
+    for i in range(1, num_tasks + 1):
+        section = [data[0][i - 1, j] for j in range(i)]
+        sections.append(section)
+
+    # create a figure and axis object
+    fig, ax = plt.subplots()
+
+    # set the x and y limits of the plot
+    ax.set_xlim(0, 65)
+    ax.set_ylim(0, 100)
+
+    # define a list of colors to use for the bars
+    colors = ['#1f77b4', '#ff7f0e', '#2ca02c', '#d62728', '#9467bd', '#8c564b', '#e377c2', '#7f7f7f', '#bcbd22', '#17becf']
+
+    # plot each section as a set of bars with unique colors
+    x_pos = 1
+    tick_positions = []
+    tick_labels = []
+    for i, section in enumerate(sections):
+        bar_num = 1
+        x_values = [x_pos + j for j in range(len(section))]
+        y_values = section
+        for j in range(len(section)):
+            color_index = j % len(colors)
+            ax.bar(x_values[j], y_values[j], yerr=data[1][i, j], capsize=3, color=colors[color_index])
+            ax.text(x_values[j], 2, f'{bar_num}', ha='center', fontsize=10)
+            bar_num += 1
+        tick_positions.append(np.mean(x_values))
+        if i == 0:
+            tick_labels.append('Task 1')
+        else:
+            tick_labels.append(f'Task 1-{i + 1}')
+        x_pos += len(section) + 1
+
+    # add labels and title
+    ax.set_ylabel('Accuracy (%)')
+    ax.set_title(title)
+
+    # set the xticks to be section names instead of numbers
+    ax.set_xticks(tick_positions)
+    ax.set_xticklabels(tick_labels, fontsize=11)
+
+    # show the plot
+    plt.show()
+
+
 
