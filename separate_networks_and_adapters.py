@@ -60,7 +60,7 @@ if __name__ == '__main__':
     #               ['SA', 'HS', 'C', 'SA_2', 'HD', 'S']]
 
     use_MLP = True
-    task_names_string = 'mixed'
+    task_names_string = 'Split CIFAR-100'
     task_names = get_task_names(task_names_string)
     num_classes = 10
     num_tasks = len(task_names[0])
@@ -274,7 +274,7 @@ if __name__ == '__main__':
                         print('Early stopped - %s got worse in this epoch.' % stopping_criteria)
                         task_epochs.append(epoch)
 
-                        acc_e, auroc_e, auprc_e = evaluate_results(model, None, None, all_tasks_test_data,
+                        acc_e, auroc_e, auprc_e, _ = evaluate_results(model, None, None, all_tasks_test_data,
                                                                    False, t, first_average, use_MLP, batch_size)
 
                         acc_epoch[r, (t * num_epochs) + epoch] = acc_e
@@ -285,7 +285,7 @@ if __name__ == '__main__':
                 # track results with or without superposition
                 if epoch == num_epochs - 1:   # calculate results for each epoch or only the last epoch in task
                     task_epochs.append(epoch)
-                    acc_e, auroc_e, auprc_e = evaluate_results(model, None, None, all_tasks_test_data,
+                    acc_e, auroc_e, auprc_e, _ = evaluate_results(model, None, None, all_tasks_test_data,
                                                                 False, t, first_average, use_MLP, batch_size)
                 else:
                     acc_e, auroc_e, auprc_e = 0, 0, 0
@@ -454,6 +454,7 @@ if __name__ == '__main__':
 
     metrics = ['acc', 'auroc', 'auprc']    # possibilities: 'acc', 'auroc', 'auprc'
     print('\n\nMetrics at the end of each task training:\n', end_performance)
+    print('\nAverage accuracy at the end: ', round(end_performance[num_tasks - 1]['acc'], 1), '+/-', round(end_performance[num_tasks - 1]['std_acc'], 1))
     plot_multiple_histograms(end_performance, num_tasks, metrics,
                              '#runs: %d, %s task results, %s model, %s' % (num_runs, first_average, method,
                              'ES on %s' % stopping_criteria if do_early_stopping else 'no ES'),

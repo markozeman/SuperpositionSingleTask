@@ -318,7 +318,7 @@ def evaluate_tasks_average(model, all_tasks_test_data, contexts, layer_dimension
             aurocs.append(auroc)
             auprcs.append(auprc)
 
-    # return np.mean(accs), np.mean(aurocs), np.mean(auprcs), []
+    return np.mean(accs), np.mean(aurocs), np.mean(auprcs), []
 
     # # use the lines below (instead of the return above) if you want to know the average accuracy for NLP, CV and both, respectively
     # accs.reverse()  # since accuracies are calculated from the last to the first task
@@ -329,9 +329,9 @@ def evaluate_tasks_average(model, all_tasks_test_data, contexts, layer_dimension
     # elif task_names_string == 'mixed' or task_names_string == 'fixed mixed':
     #     return np.mean(accs[::2]), np.mean(accs[1::2]), np.mean(accs), []
 
-    # use the lines below (instead of the returns above) if you want to know the accuracies for all previous tasks, not just the mean
-    accs.reverse()  # since accuracies are calculated from the last to the first task
-    return -1, -1, -1, accs
+    # # use the lines below (instead of the returns above) if you want to know the accuracies for all previous tasks, not just the mean
+    # accs.reverse()  # since accuracies are calculated from the last to the first task
+    # return -1, -1, -1, accs
 
 
 def evaluate_tasks_average_more_SuperAdapters(model, all_tasks_test_data, contexts, layer_dimension,

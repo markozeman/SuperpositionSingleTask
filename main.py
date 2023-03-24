@@ -46,7 +46,7 @@ if __name__ == '__main__':
     num_epochs = 50
     learning_rate = 0.001
 
-    task_names_string = 'fixed mixed'
+    task_names_string = 'Split CIFAR-100'
     task_names = get_task_names(task_names_string)
 
     # task_names = [['HS', 'SA', 'S', 'SA_2', 'C', 'HD'],
@@ -347,7 +347,8 @@ if __name__ == '__main__':
                         acc_epoch[r, (t * num_epochs) + epoch] = acc_e
                         auroc_epoch[r, (t * num_epochs) + epoch] = auroc_e
                         auprc_epoch[r, (t * num_epochs) + epoch] = auprc_e
-                        all_tasks_accuracies[r, t, :t+1] = all_accuracies
+                        if all_accuracies:
+                            all_tasks_accuracies[r, t, :t+1] = all_accuracies
                         break
 
                 # track results with or without superposition
@@ -356,7 +357,8 @@ if __name__ == '__main__':
                     acc_e, auroc_e, auprc_e, all_accuracies = evaluate_results(model, contexts, layer_dimension, all_tasks_test_data,
                                                                superposition, t, first_average, use_MLP, batch_size,
                                                                use_PSP, task_names_string=task_names_string)
-                    all_tasks_accuracies[r, t, :t+1] = all_accuracies
+                    if all_accuracies:
+                        all_tasks_accuracies[r, t, :t+1] = all_accuracies
                 else:
                     acc_e, auroc_e, auprc_e = 0, 0, 0
 
@@ -535,6 +537,7 @@ if __name__ == '__main__':
 
     metrics = ['acc', 'auroc', 'auprc']
     print('\n\nMetrics at the end of each task training:\n', end_performance)
+    print('\nAverage accuracy at the end: ', round(end_performance[num_tasks - 1]['acc'], 1), '+/-', round(end_performance[num_tasks - 1]['std_acc'], 1))
     plot_multiple_histograms(end_performance, num_tasks, metrics,
                              '#runs: %d, %s task results, %s model, %s, el.-wise=%s, %s' % (num_runs, first_average,
                              'MLP' if use_MLP else 'Transformer', 'superposition' if superposition else 'no superposition',

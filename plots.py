@@ -38,12 +38,12 @@ def plot_multiple_histograms(data, num_tasks, metrics, title, colors, y_label, y
         'auprc': 'AUPRC'
     }
 
-    # if you want separate average accuracies for NLP tasks only, CV tasks only and both, uncomment the lines below
-    metrics_names = {
-        'acc': 'NLP only average',
-        'auroc': 'CV only average',
-        'auprc': 'Total average'
-    }
+    # # if you want separate average accuracies for NLP tasks only, CV tasks only and both, uncomment the lines below
+    # metrics_names = {
+    #     'acc': 'NLP only average',
+    #     'auroc': 'CV only average',
+    #     'auprc': 'Total average'
+    # }
 
     font = {'size': 20}
     plt.rc('font', **font)
@@ -262,5 +262,107 @@ def plot_accuracies_all_tasks(data, num_tasks, title):
     # show the plot
     plt.show()
 
+
+def plot_superposition_capacity(superposition_acc_mean, separate_networks_acc_mean,
+                                superposition_acc_std, separate_networks_acc_std, title):
+    """
+    Plot how superposition capacity changes with enlarging the network
+    Comparison of 10 separate networks and 1 superposition network accuracies.
+
+    :param superposition_acc_mean: list of mean accuracies for 1 superimposed network with N neurons in the hidden layer
+    :param separate_networks_acc_mean: list of mean accuracies for 10 separate networks with N/10 neurons in the hidden layer
+    :param superposition_acc_std: list of accuracies' standard deviation for 1 superimposed network with N neurons in the hidden layer
+    :param separate_networks_acc_std: list of accuracies' standard deviation for 10 separate networks with N/10 neurons in the hidden layer
+    :param title: title of the plot as a string (dataset name)
+    :return: None
+    """
+    font = {'size': 18}
+    plt.rc('font', **font)
+
+    neurons = np.array([10, 50, 100, 200, 300, 400, 500, 1000, 2000, 5000])
+    x = np.array(list(range(len(neurons))))
+
+    bar_width = 0.3
+    opacity = 0.6
+
+    fig, ax = plt.subplots()
+
+    rects1 = ax.bar(x - (bar_width / 2), superposition_acc_mean, bar_width,
+                    yerr=superposition_acc_std, capsize=5,
+                    alpha=opacity,
+                    color='b',
+                    label='1 superimposed network')
+
+    rects2 = ax.bar(x + (bar_width / 2), separate_networks_acc_mean, bar_width,
+                    yerr=separate_networks_acc_std, capsize=5,
+                    alpha=opacity,
+                    color='r',
+                    label='10 separate networks')
+
+    ax.set_xlabel('# neurons in superimposed hidden layer')
+    ax.set_ylabel('Accuracy (%)')
+
+    ax.set_xticks(x)
+    ax.set_xticklabels(neurons)
+    ax.legend()
+
+    plt.title('dataset: ' + title)
+    plt.show()
+
+
+def plot_magnifying_factors(neurons, magnifying_factors):
+    """
+    Plot magnifying factors for 10 separate networks to reach one superposition network capacity.
+
+    :param neurons: a list of the number of neurons in the superimposed hidden layer
+    :param magnifying_factors: 2d list of magnifying factors, first column is for Split CIFAR 100 and
+                               the second column is for 10 mixed NLP and CV tasks
+    :return: None
+    """
+    font = {'size': 20}
+    plt.rc('font', **font)
+
+    x = neurons
+    y1 = [val[0] for val in magnifying_factors]
+    y2 = [val[1] for val in magnifying_factors]
+
+    bar_width = 10
+    opacity = 0.8
+
+    fig, ax = plt.subplots()
+
+    rects1 = ax.bar(x - (bar_width / 2), y1, bar_width,
+                    alpha=opacity,
+                    color='b',
+                    label='Split CIFAR-100')
+
+    rects2 = ax.bar(x + (bar_width / 2), y2, bar_width,
+                    alpha=opacity,
+                    color='g',
+                    label='10 mixed NLP and CV tasks')
+
+    ax.set_xlabel('# neurons in superimposed hidden layer')
+    ax.set_ylabel('magnification factor to achieve superposition capacity')
+    ax.set_xticks(x)
+    ax.set_xticklabels(x)
+    ax.legend()
+
+    plt.show()
+
+
+if __name__ == '__main__':
+    pass
+
+    # plot_magnifying_factors(np.array([10, 50, 100, 200, 300]), [[7, 2], [3, 2.8], [2.4, 2.5], [1.50, 1.35], [1.03, 1.07]])
+
+    # plot_superposition_capacity(np.array([19.2, 33.4, 38.5, 40.3, 40.8, 42.2, 41.5, 42.7, 42.1, 40.9]),
+    #                             np.array([10.4, 14.9, 24.8, 36.9, 40.0, 43.5, 43.9, 45.1, 45.5, 46.3]),
+    #                             np.array([1.6, 2.1, 1.6, 1.1, 1.1, 0.9, 0.7, 1.6, 1.1, 1.3]),
+    #                             np.array([0.5, 0.9, 1.7, 2.5, 0.4, 0.6, 0.3, 0.2, 1.2, 1.0]), 'Split CIFAR-100')
+
+    plot_superposition_capacity(np.array([40.5, 54.9, 59.3, 59.7, 60.8, 60.3, 61.6, 61.7, 60.4, 59.7]),
+                                np.array([29.9, 47.7, 51.8, 57.0, 60.7, 63.3, 63.6, 63.6, 64.6, 64.4]),
+                                np.array([2.2, 1.9, 1.2, 1.2, 1.3, 1.2, 0.8, 0.4, 1.0, 1.0]),
+                                np.array([8.3, 3.1, 1.1, 3.1, 0.7, 1.0, 0.9, 0.7, 0.4, 0.8]), '10 mixed NLP and CV tasks')
 
 
