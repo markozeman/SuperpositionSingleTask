@@ -46,7 +46,8 @@ if __name__ == '__main__':
     num_epochs = 50
     learning_rate = 0.001
 
-    task_names_string = 'Split CIFAR-100'
+    # options: 'NLP first', 'CV first', 'mixed', 'fixed NLP first', 'fixed CV first', 'fixed mixed', 'Split CIFAR-100'
+    task_names_string = 'fixed NLP first'
     task_names = get_task_names(task_names_string)
 
     # task_names = [['HS', 'SA', 'S', 'SA_2', 'C', 'HD'],
@@ -546,4 +547,4 @@ if __name__ == '__main__':
 
     all_tasks_accuracies_mean = np.mean(all_tasks_accuracies, axis=0)
     all_tasks_accuracies_std = np.std(all_tasks_accuracies, axis=0)
-    plot_accuracies_all_tasks((all_tasks_accuracies_mean, all_tasks_accuracies_std), num_tasks, task_names_string)
+    plot_accuracies_all_tasks((all_tasks_accuracies_mean, all_tasks_accuracies_std), num_tasks, task_names_string, task_names[0])

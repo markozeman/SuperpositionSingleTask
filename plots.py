@@ -202,34 +202,61 @@ def plot_heatmap(data, full_value):
     plt.show()
 
 
-def plot_accuracies_all_tasks(data, num_tasks, title):
+def plot_accuracies_all_tasks(data, num_tasks, title, task_names):
     """
     Plot accuracies of all previous tasks like vertical bars.
 
     :param data: (all_tasks_accuracies_mean, all_tasks_accuracies_std), both are (num_tasks x num_tasks) lower triangular matrices
     :param num_tasks: number of tasks trained
     :param title: plot title (string)
+    :param task_names: list of tasks' names as strings
     :return: None
 
     """
     font = {'size': 15}
     plt.rc('font', **font)
 
+    # dict of precalculated tasks' upper bound accuracies if trained from scratch (from randomly initialized network)
+    upper_bound_accuracies_std = {
+        'HS': [87.5, 0.6],
+        'SA': [72.9, 0.4],
+        'S': [99.0, 0.5],
+        'SA_2': [68.5, 1.6],
+        'C': [97.0, 0.2],
+        'CIF1': [41.7, 2.4],
+        'CIF2': [40.1, 3.0],
+        'CIF3': [46.5, 1.2],
+        'CIF4': [43.3, 1.6],
+        'CIF5': [48.7, 1.8]
+    }
+
     # create 10 sections with varying number of bars
     sections = []
     for i in range(1, num_tasks + 1):
         section = [data[0][i - 1, j] for j in range(i)]
+        section.append(upper_bound_accuracies_std[task_names[i-1]][0])
         sections.append(section)
 
     # create a figure and axis object
     fig, ax = plt.subplots()
 
     # set the x and y limits of the plot
-    ax.set_xlim(0, 65)
+    ax.set_xlim(0, 75)
     ax.set_ylim(0, 100)
 
     # define a list of colors to use for the bars
-    colors = ['#1f77b4', '#ff7f0e', '#2ca02c', '#d62728', '#9467bd', '#8c564b', '#e377c2', '#7f7f7f', '#bcbd22', '#17becf']
+    colors = {
+        'HS': '#1f77b4',
+        'SA': '#ff7f0e',
+        'S': '#2ca02c',
+        'SA_2': '#d62728',
+        'C': '#9467bd',
+        'CIF1': '#8c564b',
+        'CIF2': '#e377c2',
+        'CIF3': '#7f7f7f',
+        'CIF4': '#bcbd22',
+        'CIF5': '#17becf'
+    }
 
     # plot each section as a set of bars with unique colors
     x_pos = 1
@@ -240,10 +267,13 @@ def plot_accuracies_all_tasks(data, num_tasks, title):
         x_values = [x_pos + j for j in range(len(section))]
         y_values = section
         for j in range(len(section)):
-            color_index = j % len(colors)
-            ax.bar(x_values[j], y_values[j], yerr=data[1][i, j], capsize=3, color=colors[color_index])
-            ax.text(x_values[j], 2, f'{bar_num}', ha='center', fontsize=10)
-            bar_num += 1
+            if j == len(section) - 1:   # last bar - upper bound
+                ax.bar(x_values[j], y_values[j], yerr=upper_bound_accuracies_std[task_names[i]][1], capsize=3, color='0.25')
+                ax.text(x_values[j], 2, 'ub', ha='center', fontsize=8, color='white')
+            else:
+                ax.bar(x_values[j], y_values[j], yerr=data[1][i, j], capsize=3, color=colors[task_names[j]])
+                ax.text(x_values[j], 2, f'{bar_num}', ha='center', fontsize=10)
+                bar_num += 1
         tick_positions.append(np.mean(x_values))
         if i == 0:
             tick_labels.append('Task 1')
