@@ -60,7 +60,7 @@ if __name__ == '__main__':
     #               ['SA', 'HS', 'C', 'SA_2', 'HD', 'S']]
 
     use_MLP = True
-    task_names_string = 'Split CIFAR-100'
+    task_names_string = 'fixed mixed'   # options: 'NLP first', 'CV first', 'mixed', 'fixed NLP first', 'fixed CV first', 'fixed mixed', 'Split CIFAR-100'
     task_names = get_task_names(task_names_string)
     num_classes = 10
     num_tasks = len(task_names[0])
@@ -356,6 +356,8 @@ if __name__ == '__main__':
 
     mean_time_per_task, std_time_per_task = np.mean(times_per_task, axis=0), np.std(times_per_task, axis=0)
 
+    sep_net_accuracies_std = {}
+
     print('\nMeans for each task separately:')
     for t in range(num_tasks):
         print('------------------------------------------')
@@ -364,6 +366,10 @@ if __name__ == '__main__':
         print('Task %d - Accuracy = %.1f +/- %.1f' % (t + 1, mean_acc[t], std_acc[t]))
         print('Task %d - AUROC    = %.1f +/- %.1f' % (t + 1, mean_auroc[t], std_auroc[t]))
         print('Task %d - AUPRC    = %.1f +/- %.1f' % (t + 1, mean_auprc[t], std_auprc[t]))
+
+        sep_net_accuracies_std[task_names[0][t]] = [mean_acc[t], std_acc[t]]
+
+    print("\nSeparate networks accuracies for each task separately: \n", sep_net_accuracies_std)
 
     '''
     for t in range(num_tasks):

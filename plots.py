@@ -255,7 +255,12 @@ def plot_accuracies_all_tasks(data, num_tasks, title, task_names):
         'CIF2': '#e377c2',
         'CIF3': '#7f7f7f',
         'CIF4': '#bcbd22',
-        'CIF5': '#17becf'
+        'CIF5': '#17becf',
+        'CIF6': '#1f77b4',
+        'CIF7': '#ff7f0e',
+        'CIF8': '#2ca02c',
+        'CIF9': '#d62728',
+        'CIF10': '#9467bd'
     }
 
     # plot each section as a set of bars with unique colors
@@ -269,7 +274,8 @@ def plot_accuracies_all_tasks(data, num_tasks, title, task_names):
         for j in range(len(section)):
             if j == len(section) - 1:   # last bar - upper bound
                 ax.bar(x_values[j], y_values[j], yerr=upper_bound_accuracies_std[task_names[i]][1], capsize=3, color='0.25')
-                ax.text(x_values[j], 2, 'ub', ha='center', fontsize=8, color='white')
+                # ax.text(x_values[j], 2, 'ub', ha='center', fontsize=8, color='white')
+                ax.text(x_values[j], 2, 'sn', ha='center', fontsize=8, color='white')
             else:
                 ax.bar(x_values[j], y_values[j], yerr=data[1][i, j], capsize=3, color=colors[task_names[j]])
                 ax.text(x_values[j], 2, f'{bar_num}', ha='center', fontsize=10)

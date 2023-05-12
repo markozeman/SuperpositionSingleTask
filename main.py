@@ -547,4 +547,4 @@ if __name__ == '__main__':
 
     all_tasks_accuracies_mean = np.mean(all_tasks_accuracies, axis=0)
     all_tasks_accuracies_std = np.std(all_tasks_accuracies, axis=0)
-    plot_accuracies_all_tasks((all_tasks_accuracies_mean, all_tasks_accuracies_std), num_tasks, task_names_string, task_names[0])
+    plot_accuracies_all_tasks((all_tasks_accuracies_mean, all_tasks_accuracies_std), num_tasks, task_names_string + (' - %d neurons in superposed hidden layer' % model.mlp[0].out_features), task_names[0])
