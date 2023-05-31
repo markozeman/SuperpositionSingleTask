@@ -5,21 +5,6 @@ from sklearn.metrics import average_precision_score
 from scipy.special import softmax
 
 
-'''
-def load_data(dataset):
-    """
-    Load ELMo embeddings for 'dataset'.
-
-    :param dataset: string name of the datast
-    :return: X_train, y_train, X_test, y_test
-    """
-    X_train = np.load('ELMo_embeddings/%s/X_train_all.npy' % dataset, allow_pickle=True)
-    y_train = np.load('ELMo_embeddings/%s/train_labels.npy' % dataset, allow_pickle=True)
-    X_test = np.load('ELMo_embeddings/%s/X_test_all.npy' % dataset, allow_pickle=True)
-    y_test = np.load('ELMo_embeddings/%s/test_labels.npy' % dataset, allow_pickle=True)
-    return X_train, y_train, X_test, y_test
-'''
-
 
 def count_trainable_parameters(model):
     """
