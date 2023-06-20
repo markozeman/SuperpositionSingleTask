@@ -47,8 +47,12 @@ if __name__ == '__main__':
     learning_rate = 0.001
 
     # options: 'NLP first', 'CV first', 'mixed', 'fixed NLP first', 'fixed CV first', 'fixed mixed', 'Split CIFAR-100'
-    task_names_string = 'fixed NLP first'
+    # options: 'B:CIFAR-10', 'B:HS', 'B:SA', 'B:S', 'B:SA_2', 'B:C', 'B:HD'
+    task_names_string = 'B:CIFAR-10'
     task_names = get_task_names(task_names_string)
+
+    if task_names_string == 'B:CIFAR-10':
+        input_size = 12   # real input size is 3.072, but needed 12 to be compatible with other code
 
     # task_names = [['HS', 'SA', 'S', 'SA_2', 'C', 'HD'],
     #               ['C', 'HD', 'SA', 'HS', 'SA_2', 'S'],
@@ -155,7 +159,27 @@ if __name__ == '__main__':
             best_auroc_val = 0
 
             # prepare data
-            if not task_names[r][t].startswith("CIF"):      # NLP tasks
+            if not isinstance(task_names[r][t], str):    # only batch of a single task
+                X, y = task_names[r][t]
+
+                # split data into train, validation and test set
+                index_val = round(0.8 * len(y))
+                index_test = round(0.9 * len(y))
+
+                mask = torch.FloatTensor([0] * len(X))  # only for the purpose of compatibility with transformer network
+
+                if task_names_string == 'B:CIFAR-10':
+                    X_train, y_train, mask_train = X[:index_val, :], y[:index_val], mask[:index_val]
+                    X_val, y_val, mask_val = X[index_val:index_test, :], y[index_val:index_test], mask[index_val:index_test]
+                    X_test, y_test, mask_test = X[index_test:, :], y[index_test:], mask[index_test:]
+                else:   # NLP task
+                    X_train, y_train, mask_train = X[:index_val, :, :], y[:index_val], mask[:index_val, :]
+                    X_val, y_val, mask_val = X[index_val:index_test, :, :], y[index_val:index_test], mask[index_val:index_test, :]
+                    X_test, y_test, mask_test = X[index_test:, :, :], y[index_test:], mask[index_test:, :]
+
+                # TODO ?
+
+            elif not task_names[r][t].startswith("CIF"):      # NLP tasks
                 X, y, mask = get_data(task_names[r][t])
 
                 # # pad y with zeros to the size 10 (as in Split CIFAR-100)
@@ -241,7 +265,7 @@ if __name__ == '__main__':
 
                 mask_train_val = torch.FloatTensor([0] * len(X_train))  # only for the purpose of compatibility with transformer network
                 mask_test = torch.FloatTensor([0] * len(X_test))  # only for the purpose of compatibility with transformer network
-                index_val = round(0.9 * len(permutation))  # use 10% of test set as validation set
+                index_val = round(0.9 * len(permutation))  # use 10% of train set as validation set
 
                 if use_MLP:
                     X_val, y_val, mask_val = X_train[index_val:, :], y_train[index_val:], mask_train_val[index_val:]

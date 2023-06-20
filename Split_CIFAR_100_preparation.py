@@ -1,8 +1,20 @@
 import numpy as np
 import torch
 from math import floor, prod
-from keras.datasets import cifar100
+from keras.datasets import cifar10, cifar100
 from keras.utils import to_categorical
+
+
+def get_CIFAR_10():
+    """
+    Dataset of 50.000 32x32 color training images, labeled over 100 categories, and 10,000 test images.
+
+    :return: tuple of X_train, y_train, X_test, y_test
+    """
+    (X_train, y_train), (X_test, y_test) = cifar10.load_data()
+    X_train = np.moveaxis(X_train, 3, 1)    # channels last to channels first
+    X_test = np.moveaxis(X_test, 3, 1)      # channels last to channels first
+    return X_train, y_train, X_test, y_test
 
 
 def get_CIFAR_100():

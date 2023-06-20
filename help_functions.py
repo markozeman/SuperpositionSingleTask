@@ -1,9 +1,10 @@
 import numpy as np
 import torch
+from math import prod
 from sklearn.metrics import roc_auc_score, classification_report, confusion_matrix
 from sklearn.metrics import average_precision_score
 from scipy.special import softmax
-
+from Split_CIFAR_100_preparation import get_CIFAR_10
 
 
 def count_trainable_parameters(model):
@@ -141,6 +142,52 @@ def nearest_task_mean_sample(samples, true_task_IDs):
     return correct / len(samples)
 
 
+def split_into_batches(X, y, num_batches):
+    """
+    Splits the input data X and labels y into a specified number of batches.
+
+    Args:
+        X (numpy.ndarray): The input data, where the first dimension represents the number samples.
+        y (numpy.ndarray): The labels corresponding to the input data.
+        num_batches (int): The desired number of batches.
+
+    Returns:
+        list: A list of batches, where each batch is a tuple (X_batch, y_batch).
+    """
+
+    # Make sure X and y have the same number of samples in the first dimension
+    assert X.shape[0] == y.shape[0], "X and y must have the same number of samples"
+
+    # Get the number of samples
+    num_samples = X.shape[0]
+
+    # Shuffle indices to randomize the data before splitting into batches
+    indices = np.arange(num_samples)
+    np.random.shuffle(indices)
+
+    # Initialize an empty list to store the batches
+    batches = []
+
+    # Iterate through the data to create batches
+    for i in range(num_batches):
+        # Calculate start and end index for this batch
+        start_idx = i * num_samples // num_batches
+        end_idx = (i + 1) * num_samples // num_batches
+
+        # Select the indices for this batch
+        batch_indices = indices[start_idx:end_idx]
+
+        # Extract the corresponding data and labels using the batch_indices
+        X_batch = X[batch_indices]
+        y_batch = y[batch_indices]
+
+        # Append the batch (X_batch, y_batch) to the list of batches
+        batches.append((X_batch, y_batch))
+
+    # Return the list of batches
+    return batches
+
+
 def get_task_names(mode):
     """
     Get list with the order of tasks based on the selected mode.
@@ -178,6 +225,46 @@ def get_task_names(mode):
                       ['CIF1', 'CIF2', 'CIF3', 'CIF4', 'CIF5', 'CIF6', 'CIF7', 'CIF8', 'CIF9', 'CIF10'],
                       ['CIF1', 'CIF2', 'CIF3', 'CIF4', 'CIF5', 'CIF6', 'CIF7', 'CIF8', 'CIF9', 'CIF10'],
                       ['CIF1', 'CIF2', 'CIF3', 'CIF4', 'CIF5', 'CIF6', 'CIF7', 'CIF8', 'CIF9', 'CIF10']]
+    elif mode == 'B:CIFAR-10':
+        X_train, y_train, X_test, y_test = get_CIFAR_10()
+
+        # normalize input images to have values between 0 and 1
+        X_train = np.array(X_train).astype(dtype=np.float64)
+        X_test = np.array(X_test).astype(dtype=np.float64)
+        X_train /= 255
+        X_test /= 255
+
+        # stack train and test data together
+        X = np.concatenate((X_train, X_test), axis=0)
+        y = np.concatenate((y_train, y_test), axis=0)
+
+        X = X.reshape(X.shape[0], prod((3, 32, 32)))
+        X = torch.tensor(X).float()
+
+        y = torch.from_numpy(y).squeeze(dim=1).long()
+
+        num_batches = 10
+
+        batches = split_into_batches(X, y, num_batches)
+        batches = [batches] * 5     # make 5 copies of the list, one each for each run
+
+        return batches
+    elif mode == 'B:HS':
+        pass
+        # get_data() --> razdeli na 10 enako velikih batchov
+        # lahko združiš vse NLP B:* taske?
+
+    elif mode == 'B:SA':
+        pass
+    elif mode == 'B:S':
+        pass
+    elif mode == 'B:SA_2':
+        pass
+    elif mode == 'B:C':
+        pass
+    elif mode == 'B:HD':
+        pass
+
 
     return task_names
 

@@ -216,33 +216,36 @@ def plot_accuracies_all_tasks(data, num_tasks, title, task_names):
     font = {'size': 15}
     plt.rc('font', **font)
 
-    # dict of precalculated tasks' upper bound accuracies if trained from scratch (from randomly initialized network)
-    upper_bound_accuracies_std = {
-        'HS': [87.5, 0.6],
-        'SA': [72.9, 0.4],
-        'S': [99.0, 0.5],
-        'SA_2': [68.5, 1.6],
-        'C': [97.0, 0.2],
-        'CIF1': [41.7, 2.4],
-        'CIF2': [40.1, 3.0],
-        'CIF3': [46.5, 1.2],
-        'CIF4': [43.3, 1.6],
-        'CIF5': [48.7, 1.8]
-    }
+    # # dict of precalculated tasks' upper bound accuracies if trained from scratch (from randomly initialized network)
+    # upper_bound_accuracies_std = {
+    #     'HS': [87.5, 0.6],
+    #     'SA': [72.9, 0.4],
+    #     'S': [99.0, 0.5],
+    #     'SA_2': [68.5, 1.6],
+    #     'C': [97.0, 0.2],
+    #     'CIF1': [41.7, 2.4],
+    #     'CIF2': [40.1, 3.0],
+    #     'CIF3': [46.5, 1.2],
+    #     'CIF4': [43.3, 1.6],
+    #     'CIF5': [48.7, 1.8]
+    # }
 
     # create 10 sections with varying number of bars
     sections = []
     for i in range(1, num_tasks + 1):
         section = [data[0][i - 1, j] for j in range(i)]
-        section.append(upper_bound_accuracies_std[task_names[i-1]][0])
+        # section.append(upper_bound_accuracies_std[task_names[i-1]][0])
         sections.append(section)
 
     # create a figure and axis object
     fig, ax = plt.subplots()
 
     # set the x and y limits of the plot
-    ax.set_xlim(0, 75)
-    ax.set_ylim(0, 100)
+    # ax.set_xlim(0, 75)
+    # ax.set_ylim(0, 100)
+
+    ax.set_xlim(0, 65)
+    ax.set_ylim(0, 60)
 
     # define a list of colors to use for the bars
     colors = {
@@ -272,7 +275,9 @@ def plot_accuracies_all_tasks(data, num_tasks, title, task_names):
         x_values = [x_pos + j for j in range(len(section))]
         y_values = section
         for j in range(len(section)):
-            if j == len(section) - 1:   # last bar - upper bound
+            # to add a bar for upper bound (ub) / separate networks (sn)
+            ''' 
+            if j == len(section) - 1:   # last bar --> upper bound (ub) / separate networks (sn)
                 ax.bar(x_values[j], y_values[j], yerr=upper_bound_accuracies_std[task_names[i]][1], capsize=3, color='0.25')
                 # ax.text(x_values[j], 2, 'ub', ha='center', fontsize=8, color='white')
                 ax.text(x_values[j], 2, 'sn', ha='center', fontsize=8, color='white')
@@ -280,6 +285,10 @@ def plot_accuracies_all_tasks(data, num_tasks, title, task_names):
                 ax.bar(x_values[j], y_values[j], yerr=data[1][i, j], capsize=3, color=colors[task_names[j]])
                 ax.text(x_values[j], 2, f'{bar_num}', ha='center', fontsize=10)
                 bar_num += 1
+            '''
+            ax.bar(x_values[j], y_values[j], yerr=data[1][i, j], capsize=3, color=colors['CIF' + str(j+1)])
+            ax.text(x_values[j], 2, f'{bar_num}', ha='center', fontsize=10)
+            bar_num += 1
         tick_positions.append(np.mean(x_values))
         if i == 0:
             tick_labels.append('Task 1')
@@ -335,6 +344,14 @@ def plot_superposition_capacity(superposition_acc_mean, separate_networks_acc_me
                     color='r',
                     label='10 separate networks')
 
+    # Calculate y values for the logarithmic functions
+    y_red = -3.79625 + 6.82273 * np.log(neurons)
+    y_blue = 19.70364 + 3.23490 * np.log(neurons)
+
+    # Plot the logarithmic functions
+    ax.plot(x, y_red, color='darkred', linewidth=2.5, linestyle='--', label='y=-3.8+6.8*log(x)')
+    ax.plot(x, y_blue, color='darkblue', linewidth=2.5, linestyle='--', label='y=19.7+3.2*log(x)')
+
     ax.set_xlabel('# neurons in superimposed hidden layer')
     ax.set_ylabel('Accuracy (%)')
 
@@ -343,6 +360,42 @@ def plot_superposition_capacity(superposition_acc_mean, separate_networks_acc_me
     ax.legend()
 
     plt.title('dataset: ' + title)
+    plt.show()
+
+
+def plot_with_log_line(y_values, log_func, title):
+    """
+    Plot bars with a logarithmic line.
+
+    :param y_values: list of y-values for the bars
+    :param log_func: function to calculate y-values for the logarithmic line
+    :param title: title of the plot as a string
+    :return: None
+    """
+    font = {'size': 18}
+    plt.rc('font', **font)
+
+    neurons = np.array([10, 50, 100, 200, 300, 400, 500, 1000, 2000, 5000])
+    x = np.array(list(range(len(neurons))))
+
+    fig, ax = plt.subplots()
+
+    # Plot the bars
+    ax.bar(x, y_values, color='green', width=0.5)
+
+    # Calculate y values for the logarithmic line
+    y_line = log_func(neurons)
+
+    # Plot the logarithmic line
+    ax.plot(x, y_line, color='darkgreen', linewidth=2.5, linestyle='--')
+
+    ax.set_xlabel('# neurons in superimposed hidden layer')
+    ax.set_ylabel('Difference between 1 superimposed and 10 separate networks (%)')
+
+    ax.set_xticks(x)
+    ax.set_xticklabels(neurons)
+
+    plt.title(title)
     plt.show()
 
 
@@ -391,14 +444,26 @@ if __name__ == '__main__':
 
     # plot_magnifying_factors(np.array([10, 50, 100, 200, 300]), [[7, 2], [3, 2.8], [2.4, 2.5], [1.50, 1.35], [1.03, 1.07]])
 
-    # plot_superposition_capacity(np.array([19.2, 33.4, 38.5, 40.3, 40.8, 42.2, 41.5, 42.7, 42.1, 40.9]),
-    #                             np.array([10.4, 14.9, 24.8, 36.9, 40.0, 43.5, 43.9, 45.1, 45.5, 46.3]),
-    #                             np.array([1.6, 2.1, 1.6, 1.1, 1.1, 0.9, 0.7, 1.6, 1.1, 1.3]),
-    #                             np.array([0.5, 0.9, 1.7, 2.5, 0.4, 0.6, 0.3, 0.2, 1.2, 1.0]), 'Split CIFAR-100')
+    plot_superposition_capacity(np.array([19.2, 33.4, 38.5, 40.3, 40.8, 42.2, 41.5, 42.7, 42.1, 40.9]),
+                                np.array([10.4, 14.9, 24.8, 36.9, 40.0, 43.5, 43.9, 45.1, 45.5, 46.3]),
+                                np.array([1.6, 2.1, 1.6, 1.1, 1.1, 0.9, 0.7, 1.6, 1.1, 1.3]),
+                                np.array([0.5, 0.9, 1.7, 2.5, 0.4, 0.6, 0.3, 0.2, 1.2, 1.0]), 'Split CIFAR-100')
 
-    plot_superposition_capacity(np.array([40.5, 54.9, 59.3, 59.7, 60.8, 60.3, 61.6, 61.7, 60.4, 59.7]),
-                                np.array([29.9, 47.7, 51.8, 57.0, 60.7, 63.3, 63.6, 63.6, 64.6, 64.4]),
-                                np.array([2.2, 1.9, 1.2, 1.2, 1.3, 1.2, 0.8, 0.4, 1.0, 1.0]),
-                                np.array([8.3, 3.1, 1.1, 3.1, 0.7, 1.0, 0.9, 0.7, 0.4, 0.8]), '10 mixed NLP and CV tasks')
+    # plot_superposition_capacity(np.array([40.5, 54.9, 59.3, 59.7, 60.8, 60.3, 61.6, 61.7, 60.4, 59.7]),
+    #                             np.array([29.9, 47.7, 51.8, 57.0, 60.7, 63.3, 63.6, 63.6, 64.6, 64.4]),
+    #                             np.array([2.2, 1.9, 1.2, 1.2, 1.3, 1.2, 0.8, 0.4, 1.0, 1.0]),
+    #                             np.array([8.3, 3.1, 1.1, 3.1, 0.7, 1.0, 0.9, 0.7, 0.4, 0.8]), '10 mixed NLP and CV tasks')
 
+
+    y_values = [8.8, 18.5, 13.7, 3.4, 0.8, -1.3, -2.4, -2.4, -3.4, -5.4]
+    def log_func(x):
+        return 23.49990 - 3.58782 * np.log(x)
+    title = 'dataset: Split CIFAR-100'
+    plot_with_log_line(y_values, log_func, title)
+
+    # y_values = [10.6, 7.2, 7.5, 2.7, 0.1, -3.0, -2.0, -1.9, -4.2, -4.7]
+    # def log_func(x):
+    #     return 17.43547 - 2.84038 * np.log(x)
+    # title = 'dataset: 10 mixed NLP and CV tasks'
+    # plot_with_log_line(y_values, log_func, title)
 
