@@ -61,7 +61,7 @@ if __name__ == '__main__':
 
     use_MLP = True
     task_names_string = 'fixed mixed'   # options: 'NLP first', 'CV first', 'mixed', 'fixed NLP first', 'fixed CV first', 'fixed mixed', 'Split CIFAR-100'
-    task_names = get_task_names(task_names_string)
+    task_names = get_task_names(task_names_string, use_MLP)
     num_classes = 10
     num_tasks = len(task_names[0])
 

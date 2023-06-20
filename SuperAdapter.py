@@ -31,7 +31,7 @@ if __name__ == '__main__':
     num_layers = 1      # number of transformer encoder layers
     dim_feedforward = 1024
     num_classes = 2
-    bottleneck_size = 4         # todo
+    bottleneck_size = 4
     standardize_input = False
     restore_best_auroc = False
     do_early_stopping = True

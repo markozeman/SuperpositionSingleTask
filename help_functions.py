@@ -5,6 +5,7 @@ from sklearn.metrics import roc_auc_score, classification_report, confusion_matr
 from sklearn.metrics import average_precision_score
 from scipy.special import softmax
 from Split_CIFAR_100_preparation import get_CIFAR_10
+from prepare_data import get_data
 
 
 def count_trainable_parameters(model):
@@ -142,17 +143,18 @@ def nearest_task_mean_sample(samples, true_task_IDs):
     return correct / len(samples)
 
 
-def split_into_batches(X, y, num_batches):
+def split_into_batches(X, y, mask=None, num_batches=1):
     """
     Splits the input data X and labels y into a specified number of batches.
 
     Args:
         X (numpy.ndarray): The input data, where the first dimension represents the number samples.
         y (numpy.ndarray): The labels corresponding to the input data.
+        mask (numpy.ndarray): Mask needed for NLP tasks in transformers.
         num_batches (int): The desired number of batches.
 
     Returns:
-        list: A list of batches, where each batch is a tuple (X_batch, y_batch).
+        list: A list of batches, where each batch is a tuple (X_batch, y_batch) or (X_batch, y_batch, mask_batch) if mask is not None.
     """
 
     # Make sure X and y have the same number of samples in the first dimension
@@ -181,18 +183,21 @@ def split_into_batches(X, y, num_batches):
         X_batch = X[batch_indices]
         y_batch = y[batch_indices]
 
-        # Append the batch (X_batch, y_batch) to the list of batches
-        batches.append((X_batch, y_batch))
+        if mask is not None:    # Include the mask in the batches
+            mask_batch = mask[batch_indices]
+            batches.append((X_batch, y_batch, mask_batch))
+        else:
+            batches.append((X_batch, y_batch))
 
-    # Return the list of batches
     return batches
 
 
-def get_task_names(mode):
+def get_task_names(mode, use_MLP):
     """
     Get list with the order of tasks based on the selected mode.
 
     :param mode: string to select mode, options: 'NLP first', 'CV first', 'mixed', 'Split CIFAR-100'
+    :param use_MLP: boolean to select network architecture: MLP if use_MLP is True
     :return: 2D list of task names in short
     """
     if mode == 'NLP first':
@@ -225,7 +230,8 @@ def get_task_names(mode):
                       ['CIF1', 'CIF2', 'CIF3', 'CIF4', 'CIF5', 'CIF6', 'CIF7', 'CIF8', 'CIF9', 'CIF10'],
                       ['CIF1', 'CIF2', 'CIF3', 'CIF4', 'CIF5', 'CIF6', 'CIF7', 'CIF8', 'CIF9', 'CIF10'],
                       ['CIF1', 'CIF2', 'CIF3', 'CIF4', 'CIF5', 'CIF6', 'CIF7', 'CIF8', 'CIF9', 'CIF10']]
-    elif mode == 'B:CIFAR-10':
+
+    elif mode == 'B:CIFAR-10':    # in this case of batches we already return batches of data instead of strings
         X_train, y_train, X_test, y_test = get_CIFAR_10()
 
         # normalize input images to have values between 0 and 1
@@ -238,33 +244,27 @@ def get_task_names(mode):
         X = np.concatenate((X_train, X_test), axis=0)
         y = np.concatenate((y_train, y_test), axis=0)
 
-        X = X.reshape(X.shape[0], prod((3, 32, 32)))
-        X = torch.tensor(X).float()
+        if use_MLP:
+            X = X.reshape(X.shape[0], prod((3, 32, 32)))
 
+        X = torch.tensor(X).float()
         y = torch.from_numpy(y).squeeze(dim=1).long()
 
-        num_batches = 10
+        batches = split_into_batches(X, y, num_batches=10)
+        task_names = [batches] * 5     # make 5 copies of the list, one each for each run
 
-        batches = split_into_batches(X, y, num_batches)
-        batches = [batches] * 5     # make 5 copies of the list, one each for each run
+    elif mode.startswith('B:'):    # in this case of batches we already return batches of data instead of strings
+        # options: 'B:HS', 'B:SA', 'B:S', 'B:SA_2', 'B:C', 'B:HD'
 
-        return batches
-    elif mode == 'B:HS':
-        pass
-        # get_data() --> razdeli na 10 enako velikih batchov
-        # lahko združiš vse NLP B:* taske?
+        _, s = mode.split(':')
 
-    elif mode == 'B:SA':
-        pass
-    elif mode == 'B:S':
-        pass
-    elif mode == 'B:SA_2':
-        pass
-    elif mode == 'B:C':
-        pass
-    elif mode == 'B:HD':
-        pass
+        X, y, mask = get_data(s)
 
+        if use_MLP:
+            X = X.reshape(X.shape[0], -1)
+
+        batches = split_into_batches(X, y, mask, num_batches=10)
+        task_names = [batches] * 5  # make 5 copies of the list, one each for each run
 
     return task_names
 

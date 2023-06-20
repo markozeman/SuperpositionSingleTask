@@ -245,7 +245,7 @@ def plot_accuracies_all_tasks(data, num_tasks, title, task_names):
     # ax.set_ylim(0, 100)
 
     ax.set_xlim(0, 65)
-    ax.set_ylim(0, 60)
+    ax.set_ylim(0, 100)
 
     # define a list of colors to use for the bars
     colors = {

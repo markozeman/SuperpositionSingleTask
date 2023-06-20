@@ -296,7 +296,7 @@ if __name__ == '__main__':
         #                    ['SA', 'HS', 'C', 'SA_2', 'HD', 'S']]
 
         task_names_string = 'CV first'
-        runs_task_names = get_task_names(task_names_string)
+        runs_task_names = get_task_names(task_names_string, use_MLP)
         num_tasks = len(runs_task_names[0])
         times_per_task = np.zeros((args.repeat, num_tasks))
 
