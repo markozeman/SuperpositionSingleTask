@@ -11,7 +11,7 @@ from Split_CIFAR_100_preparation import get_cifar_dataset
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
-    parser.add_argument('--method', type=str, default='Upper_bound', choices=['Upper_bound', 'Lower_bound', 'Adapters'])
+    parser.add_argument('--method', type=str, default='Lower_bound', choices=['Upper_bound', 'Lower_bound', 'Adapters'])
     parser.add_argument('--num_runs', type=int, default=5)
     args, _ = parser.parse_known_args()
 
@@ -25,7 +25,6 @@ if __name__ == '__main__':
                                 "mlp.2.weight", "mlp.2.bias"]
 
     first_average = 'average'     # show 'average' results until current task
-    # use_MLP = False
     use_mask = False
 
     # method options: 'adapters', 'upper bound' (use separate transformer networks for each task), 'lower bound' (use single transformer network for all tasks)
@@ -60,10 +59,17 @@ if __name__ == '__main__':
     #               ['SA', 'HS', 'C', 'SA_2', 'HD', 'S']]
 
     use_MLP = True
-    task_names_string = 'fixed mixed'   # options: 'NLP first', 'CV first', 'mixed', 'fixed NLP first', 'fixed CV first', 'fixed mixed', 'Split CIFAR-100'
+    # options: 'NLP first', 'CV first', 'mixed', 'fixed NLP first', 'fixed CV first', 'fixed mixed', 'Split CIFAR-100'
+    # options: 'B:CIFAR-10', 'B:HS', 'B:SA', 'B:S', 'B:SA_2', 'B:C', 'B:HD'
+    task_names_string = 'B:HD'
     task_names = get_task_names(task_names_string, use_MLP)
     num_classes = 10
     num_tasks = len(task_names[0])
+
+    if task_names_string == 'B:CIFAR-10':
+        input_size = 12   # real input size is 3.072, but needed 12 to be compatible with other code
+    elif task_names_string.startswith('B:'):
+        num_classes = 2
 
     if use_MLP:
         split_cifar_100 = get_cifar_dataset('nn', (32, 32, 3))
@@ -76,6 +82,8 @@ if __name__ == '__main__':
     acc_epoch = np.zeros((num_runs, num_tasks * num_epochs))
     auroc_epoch = np.zeros((num_runs, num_tasks * num_epochs))
     auprc_epoch = np.zeros((num_runs, num_tasks * num_epochs))
+
+    all_tasks_accuracies = np.zeros((num_runs, num_tasks, num_tasks))
 
     device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
     torch.cuda.empty_cache()
@@ -138,7 +146,33 @@ if __name__ == '__main__':
             best_auroc_val = 0
 
             # prepare data
-            if not task_names[r][t].startswith("CIF"):  # NLP tasks
+            if not isinstance(task_names[r][t], str):  # only batch of a single task
+                if task_names_string == 'B:CIFAR-10':  # batch of a CIFAR-10 task
+                    X, y = task_names[r][t]
+
+                    # split data into train, validation and test set
+                    index_val = round(0.8 * len(y))
+                    index_test = round(0.9 * len(y))
+
+                    mask = torch.FloatTensor([0] * len(X))  # only for the purpose of compatibility with transformer network
+
+                    X_train, y_train, mask_train = X[:index_val, :], y[:index_val], mask[:index_val]
+                    X_val, y_val, mask_val = X[index_val:index_test, :], y[index_val:index_test], mask[index_val:index_test]
+                    X_test, y_test, mask_test = X[index_test:, :], y[index_test:], mask[index_test:]
+                else:  # batch of a NLP task
+                    X, y, mask = task_names[r][t]
+
+                    y = torch.max(y, 1)[1]  # change one-hot-encoded vectors to numbers
+
+                    # split data into train, validation and test set
+                    index_val = round(0.8 * len(y))
+                    index_test = round(0.9 * len(y))
+
+                    X_train, y_train, mask_train = X[:index_val, :], y[:index_val], mask[:index_val, :]
+                    X_val, y_val, mask_val = X[index_val:index_test, :], y[index_val:index_test], mask[index_val:index_test, :]
+                    X_test, y_test, mask_test = X[index_test:, :], y[index_test:], mask[index_test:, :]
+
+            elif not task_names[r][t].startswith("CIF"):  # NLP tasks
                 X, y, mask = get_data(task_names[r][t])
 
                 if standardize_input:
@@ -274,19 +308,24 @@ if __name__ == '__main__':
                         print('Early stopped - %s got worse in this epoch.' % stopping_criteria)
                         task_epochs.append(epoch)
 
-                        acc_e, auroc_e, auprc_e, _ = evaluate_results(model, None, None, all_tasks_test_data,
-                                                                   False, t, first_average, use_MLP, batch_size)
+                        acc_e, auroc_e, auprc_e, all_accuracies = evaluate_results(model, None, None, all_tasks_test_data,
+                                                                  False, t, first_average, use_MLP, batch_size, task_names_string=task_names_string)
 
                         acc_epoch[r, (t * num_epochs) + epoch] = acc_e
                         auroc_epoch[r, (t * num_epochs) + epoch] = auroc_e
                         auprc_epoch[r, (t * num_epochs) + epoch] = auprc_e
+                        if all_accuracies:
+                            all_tasks_accuracies[r, t, :t+1] = all_accuracies
                         break
 
                 # track results with or without superposition
                 if epoch == num_epochs - 1:   # calculate results for each epoch or only the last epoch in task
                     task_epochs.append(epoch)
-                    acc_e, auroc_e, auprc_e, _ = evaluate_results(model, None, None, all_tasks_test_data,
-                                                                False, t, first_average, use_MLP, batch_size)
+                    acc_e, auroc_e, auprc_e, all_accuracies = evaluate_results(model, None, None, all_tasks_test_data,
+                                                              False, t, first_average, use_MLP, batch_size, task_names_string=task_names_string)
+
+                    if all_accuracies:
+                        all_tasks_accuracies[r, t, :t + 1] = all_accuracies
                 else:
                     acc_e, auroc_e, auprc_e = 0, 0, 0
 
@@ -466,4 +505,8 @@ if __name__ == '__main__':
                              'ES on %s' % stopping_criteria if do_early_stopping else 'no ES'),
                              colors[:len(metrics)], 'Metric value', min_y)
 
+    all_tasks_accuracies_mean = np.mean(all_tasks_accuracies, axis=0)
+    all_tasks_accuracies_std = np.std(all_tasks_accuracies, axis=0)
+    plot_accuracies_all_tasks((all_tasks_accuracies_mean, all_tasks_accuracies_std), num_tasks,
+                              task_names_string + (' - %d neurons in hidden layer (%s, no superposition)' % (model.mlp[0].out_features, method)), task_names[0])
 
