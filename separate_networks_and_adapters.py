@@ -61,8 +61,11 @@ if __name__ == '__main__':
     use_MLP = True
     # options: 'NLP first', 'CV first', 'mixed', 'fixed NLP first', 'fixed CV first', 'fixed mixed', 'Split CIFAR-100'
     # options: 'B:CIFAR-10', 'B:HS', 'B:SA', 'B:S', 'B:SA_2', 'B:C', 'B:HD'
-    task_names_string = 'B:HD'
+    task_names_string = 'B:CIFAR-10'
     task_names = get_task_names(task_names_string, use_MLP)
+
+    data = 'test'  # 'train' or 'test'
+
     num_classes = 10
     num_tasks = len(task_names[0])
 
@@ -101,7 +104,11 @@ if __name__ == '__main__':
         start_time = time.time()
         previous_time = start_time
 
-        all_tasks_test_data = []
+        if data == 'train':
+            all_tasks_train_data = []
+        elif data == 'test':
+            all_tasks_test_data = []
+
         task_epochs = []
 
         if method == 'adapters':
@@ -239,7 +246,10 @@ if __name__ == '__main__':
             val_loader = torch.utils.data.DataLoader(val_dataset, batch_size=batch_size)
             test_loader = torch.utils.data.DataLoader(test_dataset, batch_size=batch_size)
 
-            all_tasks_test_data.append(test_loader)
+            if data == 'train':
+                all_tasks_train_data.append(train_loader)
+            elif data == 'test':
+                all_tasks_test_data.append(test_loader)
 
             for epoch in range(num_epochs):
                 model.train()
@@ -308,7 +318,14 @@ if __name__ == '__main__':
                         print('Early stopped - %s got worse in this epoch.' % stopping_criteria)
                         task_epochs.append(epoch)
 
-                        acc_e, auroc_e, auprc_e, all_accuracies = evaluate_results(model, None, None, all_tasks_test_data,
+                        if data == 'train':
+                            acc_e, auroc_e, auprc_e, all_accuracies = evaluate_results(model, None, None,
+                                                                                       all_tasks_train_data,
+                                                                                       False, t, first_average, use_MLP,
+                                                                                       batch_size,
+                                                                                       task_names_string=task_names_string)
+                        elif data == 'test':
+                            acc_e, auroc_e, auprc_e, all_accuracies = evaluate_results(model, None, None, all_tasks_test_data,
                                                                   False, t, first_average, use_MLP, batch_size, task_names_string=task_names_string)
 
                         acc_epoch[r, (t * num_epochs) + epoch] = acc_e
@@ -321,7 +338,15 @@ if __name__ == '__main__':
                 # track results with or without superposition
                 if epoch == num_epochs - 1:   # calculate results for each epoch or only the last epoch in task
                     task_epochs.append(epoch)
-                    acc_e, auroc_e, auprc_e, all_accuracies = evaluate_results(model, None, None, all_tasks_test_data,
+
+                    if data == 'train':
+                        acc_e, auroc_e, auprc_e, all_accuracies = evaluate_results(model, None, None,
+                                                                                   all_tasks_train_data,
+                                                                                   False, t, first_average, use_MLP,
+                                                                                   batch_size,
+                                                                                   task_names_string=task_names_string)
+                    elif data == 'test':
+                        acc_e, auroc_e, auprc_e, all_accuracies = evaluate_results(model, None, None, all_tasks_test_data,
                                                               False, t, first_average, use_MLP, batch_size, task_names_string=task_names_string)
 
                     if all_accuracies:

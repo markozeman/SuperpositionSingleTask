@@ -48,8 +48,10 @@ if __name__ == '__main__':
 
     # options: 'NLP first', 'CV first', 'mixed', 'fixed NLP first', 'fixed CV first', 'fixed mixed', 'Split CIFAR-100'
     # options: 'B:CIFAR-10', 'B:HS', 'B:SA', 'B:S', 'B:SA_2', 'B:C', 'B:HD'
-    task_names_string = 'B:HD'
+    task_names_string = 'B:CIFAR-10'
     task_names = get_task_names(task_names_string, use_MLP)
+
+    data = 'test'  # 'train' or 'test'
 
     # task_names = [['HS', 'SA', 'S', 'SA_2', 'C', 'HD'],
     #               ['C', 'HD', 'SA', 'HS', 'SA_2', 'S'],
@@ -136,7 +138,10 @@ if __name__ == '__main__':
 
         print(model)
 
-        all_tasks_test_data = []
+        if data == 'train':
+            all_tasks_train_data = []
+        elif data == 'test':
+            all_tasks_test_data = []
         contexts, layer_dimension = create_context_vectors(model, num_tasks, element_wise, use_PSP)
         task_epochs = []
         acc_thresholds = []
@@ -287,7 +292,10 @@ if __name__ == '__main__':
             val_loader = torch.utils.data.DataLoader(val_dataset, batch_size=batch_size)
             test_loader = torch.utils.data.DataLoader(test_dataset, batch_size=batch_size)
 
-            all_tasks_test_data.append(test_loader)
+            if data == 'train':
+                all_tasks_train_data.append(train_loader)
+            elif data == 'test':
+                all_tasks_test_data.append(test_loader)
 
             for epoch in range(num_epochs):
                 model.train()
@@ -373,10 +381,19 @@ if __name__ == '__main__':
                         acc_thresholds.append(acc_threshold)    # 'acc_thresholds' expects all tasks to stop early
 
                         task_epochs.append(epoch)
-                        acc_e, auroc_e, auprc_e, all_accuracies = evaluate_results(model, contexts, layer_dimension, all_tasks_test_data,
-                                                                   superposition, t, first_average, use_MLP, batch_size,
-                                                                   use_PSP, acc_thresholds=acc_thresholds,
-                                                                   task_names_string=task_names_string)
+                        if data == 'train':
+                            acc_e, auroc_e, auprc_e, all_accuracies = evaluate_results(model, contexts, layer_dimension,
+                                                                                       all_tasks_train_data,
+                                                                                       superposition, t, first_average,
+                                                                                       use_MLP, batch_size,
+                                                                                       use_PSP,
+                                                                                       acc_thresholds=acc_thresholds,
+                                                                                       task_names_string=task_names_string)
+                        elif data == 'test':
+                            acc_e, auroc_e, auprc_e, all_accuracies = evaluate_results(model, contexts, layer_dimension, all_tasks_test_data,
+                                                                       superposition, t, first_average, use_MLP, batch_size,
+                                                                       use_PSP, acc_thresholds=acc_thresholds,
+                                                                       task_names_string=task_names_string)
                         acc_epoch[r, (t * num_epochs) + epoch] = acc_e
                         auroc_epoch[r, (t * num_epochs) + epoch] = auroc_e
                         auprc_epoch[r, (t * num_epochs) + epoch] = auprc_e
@@ -387,9 +404,17 @@ if __name__ == '__main__':
                 # track results with or without superposition
                 if superposition_each_epoch or (epoch == num_epochs - 1):   # calculate results for each epoch or only the last epoch in task
                     task_epochs.append(epoch)
-                    acc_e, auroc_e, auprc_e, all_accuracies = evaluate_results(model, contexts, layer_dimension, all_tasks_test_data,
-                                                               superposition, t, first_average, use_MLP, batch_size,
-                                                               use_PSP, task_names_string=task_names_string)
+                    if data == 'train':
+                        acc_e, auroc_e, auprc_e, all_accuracies = evaluate_results(model, contexts, layer_dimension,
+                                                                                   all_tasks_train_data,
+                                                                                   superposition, t, first_average,
+                                                                                   use_MLP, batch_size,
+                                                                                   use_PSP,
+                                                                                   task_names_string=task_names_string)
+                    elif data == 'test':
+                        acc_e, auroc_e, auprc_e, all_accuracies = evaluate_results(model, contexts, layer_dimension, all_tasks_test_data,
+                                                                   superposition, t, first_average, use_MLP, batch_size,
+                                                                   use_PSP, task_names_string=task_names_string)
                     if all_accuracies:
                         all_tasks_accuracies[r, t, :t+1] = all_accuracies
                 else:
