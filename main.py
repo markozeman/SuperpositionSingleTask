@@ -571,12 +571,15 @@ if __name__ == '__main__':
     metrics = ['acc', 'auroc', 'auprc']
     print('\n\nMetrics at the end of each task training:\n', end_performance)
     print('\nAverage accuracy at the end: ', round(end_performance[num_tasks - 1]['acc'], 1), '+/-', round(end_performance[num_tasks - 1]['std_acc'], 1))
-    plot_multiple_histograms(end_performance, num_tasks, metrics,
-                             '#runs: %d, %s task results, %s model, %s, el.-wise=%s, %s' % (num_runs, first_average,
-                             'MLP' if use_MLP else 'Transformer', 'superposition' if superposition else 'no superposition',
-                             str(element_wise) if superposition and not use_MLP else '/', 'ES' if do_early_stopping else 'no ES'),
-                             colors[:len(metrics)], 'Metric value', min_y)
+    # plot_multiple_histograms(end_performance, num_tasks, metrics,
+    #                          '#runs: %d, %s task results, %s model, %s, el.-wise=%s, %s' % (num_runs, first_average,
+    #                          'MLP' if use_MLP else 'Transformer', 'superposition' if superposition else 'no superposition',
+    #                          str(element_wise) if superposition and not use_MLP else '/', 'ES' if do_early_stopping else 'no ES'),
+    #                          colors[:len(metrics)], 'Metric value', min_y)
 
     all_tasks_accuracies_mean = np.mean(all_tasks_accuracies, axis=0)
     all_tasks_accuracies_std = np.std(all_tasks_accuracies, axis=0)
     plot_accuracies_all_tasks((all_tasks_accuracies_mean, all_tasks_accuracies_std), num_tasks, task_names_string + (' - %d neurons in superposed hidden layer' % model.mlp[0].out_features), task_names[0])
+
+    end_average_all_batches = np.mean(all_tasks_accuracies_mean[-1, :])
+    print('\nAverage accuracy for all batches at the end of training: ', round(end_average_all_batches, 1))

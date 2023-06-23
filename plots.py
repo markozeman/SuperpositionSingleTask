@@ -291,9 +291,9 @@ def plot_accuracies_all_tasks(data, num_tasks, title, task_names):
             bar_num += 1
         tick_positions.append(np.mean(x_values))
         if i == 0:
-            tick_labels.append('Task 1')
+            tick_labels.append('Batch 1')
         else:
-            tick_labels.append(f'Task 1-{i + 1}')
+            tick_labels.append(f'Batch 1-{i + 1}')
         x_pos += len(section) + 1
 
     # add labels and title

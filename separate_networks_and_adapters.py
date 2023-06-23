@@ -39,7 +39,7 @@ if __name__ == '__main__':
     num_heads = 4
     num_layers = 1      # number of transformer encoder layers
     dim_feedforward = 1024
-    num_classes = 2
+    # num_classes = 2
     bottleneck_size = 4    # only used with adapters
     standardize_input = False
     restore_best_auroc = False
@@ -395,7 +395,7 @@ if __name__ == '__main__':
 
     mean_time_per_task, std_time_per_task = np.mean(times_per_task, axis=0), np.std(times_per_task, axis=0)
 
-    sep_net_accuracies_std = {}
+    # sep_net_accuracies_std = {}
 
     print('\nMeans for each task separately:')
     for t in range(num_tasks):
@@ -406,40 +406,9 @@ if __name__ == '__main__':
         print('Task %d - AUROC    = %.1f +/- %.1f' % (t + 1, mean_auroc[t], std_auroc[t]))
         print('Task %d - AUPRC    = %.1f +/- %.1f' % (t + 1, mean_auprc[t], std_auprc[t]))
 
-        sep_net_accuracies_std[task_names[0][t]] = [mean_acc[t], std_acc[t]]
-
-    print("\nSeparate networks accuracies for each task separately: \n", sep_net_accuracies_std)
-
-    '''
-    for t in range(num_tasks):
-        if t == 0:
-            # s = 'Hate speech'
-            s = permutations[permutation_index][0]
-        elif t == 1:
-            # s = 'IMDB sentiment analysis'
-            s = permutations[permutation_index][1]
-        elif t == 2:
-            # s = 'SMS spam'
-            s = permutations[permutation_index][2]
-        elif t == 3:
-            s = 'Amazon, Yelp sentiment analysis'
-        elif t == 4:
-            s = 'Clickbait'
-        elif t == 5:
-            s = 'Humor detection'
-
-        if s == 'HS':
-            s = 'Hate speech'
-        elif s == 'SA':
-            s = 'IMDB sentiment analysis'
-        elif s == 'S':
-            s = 'SMS spam'
-
-        print('------------------------------------------')
-        print('%s - Accuracy = %.1f +/- %.1f' % (s, mean_acc[t], std_acc[t]))
-        print('%s - AUROC    = %.1f +/- %.1f' % (s, mean_auroc[t], std_auroc[t]))
-        print('%s - AUPRC    = %.1f +/- %.1f' % (s, mean_auprc[t], std_auprc[t]))
-    '''
+    #     sep_net_accuracies_std[task_names[0][t]] = [mean_acc[t], std_acc[t]]
+    #
+    # print("\nSeparate networks accuracies for each task separately: \n", sep_net_accuracies_std)
 
     show_only_accuracy = False
     min_y = 0
@@ -500,13 +469,15 @@ if __name__ == '__main__':
     metrics = ['acc', 'auroc', 'auprc']    # possibilities: 'acc', 'auroc', 'auprc'
     print('\n\nMetrics at the end of each task training:\n', end_performance)
     print('\nAverage accuracy at the end: ', round(end_performance[num_tasks - 1]['acc'], 1), '+/-', round(end_performance[num_tasks - 1]['std_acc'], 1))
-    plot_multiple_histograms(end_performance, num_tasks, metrics,
-                             '#runs: %d, %s task results, %s model, %s' % (num_runs, first_average, method,
-                             'ES on %s' % stopping_criteria if do_early_stopping else 'no ES'),
-                             colors[:len(metrics)], 'Metric value', min_y)
+    # plot_multiple_histograms(end_performance, num_tasks, metrics,
+    #                          '#runs: %d, %s task results, %s model, %s' % (num_runs, first_average, method,
+    #                          'ES on %s' % stopping_criteria if do_early_stopping else 'no ES'),
+    #                          colors[:len(metrics)], 'Metric value', min_y)
 
     all_tasks_accuracies_mean = np.mean(all_tasks_accuracies, axis=0)
     all_tasks_accuracies_std = np.std(all_tasks_accuracies, axis=0)
     plot_accuracies_all_tasks((all_tasks_accuracies_mean, all_tasks_accuracies_std), num_tasks,
                               task_names_string + (' - %d neurons in hidden layer (%s, no superposition)' % (model.mlp[0].out_features, method)), task_names[0])
 
+    end_average_all_batches = np.mean(all_tasks_accuracies_mean[-1, :])
+    print('\nAverage accuracy for all batches at the end of training: ', round(end_average_all_batches, 1))
