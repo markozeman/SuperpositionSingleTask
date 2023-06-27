@@ -286,7 +286,7 @@ def plot_accuracies_all_tasks(data, num_tasks, title, task_names):
                 ax.text(x_values[j], 2, f'{bar_num}', ha='center', fontsize=10)
                 bar_num += 1
             '''
-            ax.bar(x_values[j], y_values[j], yerr=data[1][i, j], capsize=3, color=colors['CIF' + str(j+1)])
+            ax.bar(x_values[j], y_values[j], yerr=data[1][i, j], capsize=3, color=colors['CIF' + str((j % 10)+1)])
             ax.text(x_values[j], 2, f'{bar_num}', ha='center', fontsize=10)
             bar_num += 1
         tick_positions.append(np.mean(x_values))

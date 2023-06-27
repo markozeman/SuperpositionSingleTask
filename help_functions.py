@@ -143,7 +143,7 @@ def nearest_task_mean_sample(samples, true_task_IDs):
     return correct / len(samples)
 
 
-def split_into_batches(X, y, mask=None, num_batches=1):
+def split_into_batches(X, y, mask=None, num_batches=10):
     """
     Splits the input data X and labels y into a specified number of batches.
 
