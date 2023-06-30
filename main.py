@@ -602,9 +602,71 @@ if __name__ == '__main__':
     #                          str(element_wise) if superposition and not use_MLP else '/', 'ES' if do_early_stopping else 'no ES'),
     #                          colors[:len(metrics)], 'Metric value', min_y)
 
+    # Test the accuracy if task/batch ID is not known at inference
+    if data == 'test':
+        test_accuracies = []
+        total_confusion_matrix = np.zeros((num_classes, num_classes))
+        for data_loader in all_tasks_test_data:
+            all_batches_test_outputs = []
+            y_test = []
+
+            for task_i in range(num_tasks - 1, -1, -1):
+                model.eval()
+                with torch.no_grad():
+                    test_outputs = []
+
+                    for batch_X, batch_y, batch_mask in data_loader:
+                        if torch.cuda.is_available():
+                            batch_X = batch_X.cuda()
+                            batch_mask = batch_mask.cuda()
+
+                            if not use_mask:
+                                batch_mask = None
+
+                        outputs = get_model_outputs(model, batch_X, batch_mask, use_MLP, use_PSP, contexts, task_i)
+
+                        test_outputs.append(outputs)
+
+                        if task_i == 0:
+                            y_test.append(batch_y)
+
+                    all_batches_test_outputs.append(test_outputs)
+
+                # context multiplication to the previous task
+                if task_i > 0:  # because we do not perform multiplication before the first task
+                    context_multiplication(model, contexts, layer_dimension, task_i - 1)   # task_i - 1, because contexts are only used between tasks
+
+            # restore model parameters to the old ones (before context multiplication)
+            for task_i in range(num_tasks-1):  # iterate across tasks forward
+                context_multiplication(model, contexts, layer_dimension, task_i)
+
+            all_batches_test_outputs = np.array(list(map(lambda x: torch.cat(x, dim=0).cpu().numpy(), all_batches_test_outputs)))
+
+            # normalize model's output vectors
+            xmin = np.min(all_batches_test_outputs, axis=-1, keepdims=True)
+            xsum = np.sum(all_batches_test_outputs - xmin, axis=-1, keepdims=True)
+            all_batches_test_outputs = (all_batches_test_outputs - xmin) / xsum     # normalized
+
+            all_batches_test_outputs = np.transpose(all_batches_test_outputs, (1, 0, 2)).reshape(all_batches_test_outputs.shape[1], -1)
+
+            predicted = np.argmax(all_batches_test_outputs, axis=1) % 10
+
+            y_test = torch.cat(y_test, dim=0).cpu().numpy()
+
+            test_acc = (np.sum(predicted == y_test) / predicted.shape[0]) * 100
+            print("\nTEST acc: %.2f %%" % test_acc)
+            test_accuracies.append(test_acc)
+
+            conf_mat = confusion_matrix(y_test, predicted, labels=list(range(num_classes)))
+            total_confusion_matrix += conf_mat
+            print('Confusion matrix:\n', conf_mat)
+
+        print("\n\nAverage TEST accuracy: %.2f %%" % np.mean(np.array(test_accuracies)))
+        print('\nTotal confusion matrix:\n', total_confusion_matrix)
+
     all_tasks_accuracies_mean = np.mean(all_tasks_accuracies, axis=0)
     all_tasks_accuracies_std = np.std(all_tasks_accuracies, axis=0)
     plot_accuracies_all_tasks((all_tasks_accuracies_mean, all_tasks_accuracies_std), num_tasks, task_names_string + (' - %d neurons in superposed hidden layer' % model.mlp[0].out_features), task_names[0])
 
     end_average_all_batches = np.mean(all_tasks_accuracies_mean[-1, :])
-    print('\nAverage accuracy for all batches at the end of training: ', round(end_average_all_batches, 1))
+    print('\n\n\nAverage accuracy for all batches at the end of training: ', round(end_average_all_batches, 1))
