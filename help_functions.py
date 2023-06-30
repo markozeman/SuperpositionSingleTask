@@ -143,7 +143,7 @@ def nearest_task_mean_sample(samples, true_task_IDs):
     return correct / len(samples)
 
 
-def split_into_batches(X, y, mask=None, num_batches=10):
+def split_into_batches(X, y, mask=None, num_batches=10, mode='random'):
     """
     Splits the input data X and labels y into a specified number of batches.
 
@@ -152,6 +152,7 @@ def split_into_batches(X, y, mask=None, num_batches=10):
         y (numpy.ndarray): The labels corresponding to the input data.
         mask (numpy.ndarray): Mask needed for NLP tasks in transformers.
         num_batches (int): The desired number of batches.
+        mode (string): Splitting type that can be 'random' or by 'class'.
 
     Returns:
         list: A list of batches, where each batch is a tuple (X_batch, y_batch) or (X_batch, y_batch, mask_batch) if mask is not None.
@@ -163,9 +164,23 @@ def split_into_batches(X, y, mask=None, num_batches=10):
     # Get the number of samples
     num_samples = X.shape[0]
 
-    # Shuffle indices to randomize the data before splitting into batches
-    indices = np.arange(num_samples)
-    np.random.shuffle(indices)
+    if mode == 'random':
+        # Shuffle indices to randomize the data before splitting into batches
+        indices = np.arange(num_samples)
+        np.random.shuffle(indices)
+    elif mode == 'class':
+        unique_classes = np.unique(y)
+        num_classes = len(unique_classes)
+
+        indices = np.array([], dtype=int)
+
+        assert num_classes % num_batches == 0, "Number of unique classes must be divisible by number of batches."
+
+        # Create batch indices by class
+        for i in range(0, num_classes, num_classes // num_batches):
+            class_indices = np.where(np.isin(y, unique_classes[i:i + num_classes // num_batches]))[0]
+            np.random.shuffle(class_indices)
+            indices = np.concatenate((indices, class_indices))
 
     # Initialize an empty list to store the batches
     batches = []
@@ -251,6 +266,9 @@ def get_task_names(mode, use_MLP):
         y = torch.from_numpy(y).squeeze(dim=1).long()
 
         batches = split_into_batches(X, y, num_batches=10)
+
+        # batches = split_into_batches(X, y, num_batches=5, mode='class')      # TODO
+
         task_names = [batches] * 5     # make 5 copies of the list, one each for each run
 
     elif mode.startswith('B:'):    # in this case of batches we already return batches of data instead of strings

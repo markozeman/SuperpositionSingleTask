@@ -302,7 +302,7 @@ def plot_accuracies_all_tasks(data, num_tasks, title, task_names):
 
     # set the xticks to be section names instead of numbers
     ax.set_xticks(tick_positions)
-    ax.set_xticklabels(tick_labels, fontsize=11)
+    ax.set_xticklabels(tick_labels, fontsize=9)
 
     # show the plot
     plt.show()

@@ -321,7 +321,8 @@ def evaluate_tasks_average(model, all_tasks_test_data, contexts, layer_dimension
     # return np.mean(accs), np.mean(aurocs), np.mean(auprcs), []
 
     # # use the lines below (instead of the return above) if you want to know the average accuracy for NLP, CV and both, respectively
-    # accs.reverse()  # since accuracies are calculated from the last to the first task
+    # if superposition:
+    #     accs.reverse()  # since accuracies are calculated from the last to the first task using superposition
     # if task_names_string == 'NLP first' or task_names_string == 'fixed NLP first':
     #     return np.mean(accs[:5]), np.mean(accs[5:]), np.mean(accs), []
     # elif task_names_string == 'CV first' or task_names_string == 'fixed CV first':
@@ -330,7 +331,8 @@ def evaluate_tasks_average(model, all_tasks_test_data, contexts, layer_dimension
     #     return np.mean(accs[::2]), np.mean(accs[1::2]), np.mean(accs), []
 
     # use the lines below (instead of the returns above) if you want to know the accuracies for all previous tasks, not just the mean
-    accs.reverse()  # since accuracies are calculated from the last to the first task
+    if superposition:
+        accs.reverse()  # since accuracies are calculated from the last to the first task
     return -1, -1, -1, accs
 
 
