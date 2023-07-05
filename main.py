@@ -48,7 +48,7 @@ if __name__ == '__main__':
 
     # options: 'NLP first', 'CV first', 'mixed', 'fixed NLP first', 'fixed CV first', 'fixed mixed', 'Split CIFAR-100'
     # options: 'B:CIFAR-10', 'B:HS', 'B:SA', 'B:S', 'B:SA_2', 'B:C', 'B:HD'
-    task_names_string = 'B:CIFAR-10'
+    task_names_string = 'B:SA'
     task_names = get_task_names(task_names_string, use_MLP)
 
     data = 'test'  # 'train' or 'test'
@@ -146,12 +146,14 @@ if __name__ == '__main__':
         task_epochs = []
         acc_thresholds = []
 
+        all_y_10 = []
+
         for t in range(num_tasks):
             print('- Task %d -' % (t + 1))
 
             criterion = torch.nn.CrossEntropyLoss().cuda()
 
-            optimizer = torch.optim.Adam(model.parameters(), lr=learning_rate)
+            optimizer = torch.optim.Adam(model.parameters(), lr=learning_rate, weight_decay=0)      # weight_decay is L2 regularization
             scheduler = torch.optim.lr_scheduler.ReduceLROnPlateau(optimizer, mode='max', factor=0.1, patience=2,
                                                                    threshold=0.0001, min_lr=1e-8, verbose=True)
 
@@ -169,12 +171,23 @@ if __name__ == '__main__':
             if not isinstance(task_names[r][t], str):    # only batch of a single task
                 if task_names_string == 'B:CIFAR-10':    # batch of a CIFAR-10 task
                     X, y = task_names[r][t]
+                    # X, y, y_10 = task_names[r][t]
+
+                    # Generate a permutation of indices in the a dimension
+                    perm = torch.randperm(X.size(0))
+                    # Apply the permutation to both tensors
+                    X = X[perm]
+                    y = y[perm]
 
                     # split data into train, validation and test set
                     index_val = round(0.8 * len(y))
                     index_test = round(0.9 * len(y))
 
                     mask = torch.FloatTensor([0] * len(X))  # only for the purpose of compatibility with transformer network
+
+                    # # save y label from 0 to 9
+                    # y_10 = y_10[perm]
+                    # all_y_10.append(y_10[index_test:])
 
                     X_train, y_train, mask_train = X[:index_val, :], y[:index_val], mask[:index_val]
                     X_val, y_val, mask_val = X[index_val:index_test, :], y[index_val:index_test], mask[index_val:index_test]
@@ -316,6 +329,28 @@ if __name__ == '__main__':
                     loss = criterion(outputs, batch_y)
                     loss.backward()
                     optimizer.step()
+
+                # check train set
+                model.eval()
+                with torch.no_grad():
+                    tr_outputs = []
+
+                    for batch_X, batch_y, batch_mask in train_loader:
+                        if torch.cuda.is_available():
+                            batch_X = batch_X.cuda()
+                            batch_mask = batch_mask.cuda()
+
+                            if not use_mask:
+                                batch_mask = None
+
+                        outputs = get_model_outputs(model, batch_X, batch_mask, use_MLP, use_PSP, contexts, t)
+
+                        tr_outputs.append(outputs)
+
+                    tr_acc, _, _ = get_stats(tr_outputs, y_train)
+                    tr_loss = criterion(torch.cat(tr_outputs, dim=0), y_train.cuda())
+
+                    print("TRAIN Epoch: %d --- train acc: %.2f, train loss: %.3f" % (epoch, tr_acc * 100, tr_loss))
 
                 # check validation set
                 model.eval()
@@ -602,11 +637,12 @@ if __name__ == '__main__':
     #                          str(element_wise) if superposition and not use_MLP else '/', 'ES' if do_early_stopping else 'no ES'),
     #                          colors[:len(metrics)], 'Metric value', min_y)
 
+    '''
     # Test the accuracy if task/batch ID is not known at inference
     if data == 'test':
         test_accuracies = []
         total_confusion_matrix = np.zeros((num_classes, num_classes))
-        for data_loader in all_tasks_test_data:
+        for dl_index, data_loader in enumerate(all_tasks_test_data):
             all_batches_test_outputs = []
             y_test = []
 
@@ -649,9 +685,20 @@ if __name__ == '__main__':
 
             all_batches_test_outputs = np.transpose(all_batches_test_outputs, (1, 0, 2)).reshape(all_batches_test_outputs.shape[1], -1)
 
-            predicted = np.argmax(all_batches_test_outputs, axis=1) % 10
+            # reverse pairs because above we loop from the last learned task to the first one
+            all_batches_test_outputs = all_batches_test_outputs.reshape(all_batches_test_outputs.shape[0], -1, 2)[:, ::-1, :].reshape(all_batches_test_outputs.shape)
 
+            predicted = np.argmax(all_batches_test_outputs, axis=1) % num_classes
             y_test = torch.cat(y_test, dim=0).cpu().numpy()
+
+            # predicted = np.argmax(all_batches_test_outputs[:, 1::2], axis=1)
+
+            # # create a new array where all occurrences of 'dl_index' are 1 and all other values are 0
+            # predicted = (predicted == dl_index).astype(int)
+
+            # y_10_test = all_y_10[dl_index].cpu().numpy()
+            # y_10_test_to_0_1 = (y_10_test == dl_index).astype(int)
+            # print('Equal: ', np.array_equal(y_test, y_10_test_to_0_1))
 
             test_acc = (np.sum(predicted == y_test) / predicted.shape[0]) * 100
             print("\nTEST acc: %.2f %%" % test_acc)
@@ -663,6 +710,7 @@ if __name__ == '__main__':
 
         print("\n\nAverage TEST accuracy: %.2f %%" % np.mean(np.array(test_accuracies)))
         print('\nTotal confusion matrix:\n', total_confusion_matrix)
+    '''
 
     all_tasks_accuracies_mean = np.mean(all_tasks_accuracies, axis=0)
     all_tasks_accuracies_std = np.std(all_tasks_accuracies, axis=0)

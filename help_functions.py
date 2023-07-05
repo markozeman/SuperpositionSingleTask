@@ -204,6 +204,40 @@ def split_into_batches(X, y, mask=None, num_batches=10, mode='random'):
         else:
             batches.append((X_batch, y_batch))
 
+    '''
+    # Learning one vs. rest: iterate through the data to create batches, each batch has all task's data.
+    for i in range(num_batches):
+        X_batch = []
+        y_batch = []
+        y_10_batch = []
+
+        for j in range(num_batches):
+            # Calculate start and end index for this batch
+            start_idx = j * num_samples // num_batches
+            end_idx = (j + 1) * num_samples // num_batches
+
+            # Select the indices for this batch
+            batch_indices = indices[start_idx:end_idx]
+
+            # Extract the corresponding data and labels using the batch_indices
+            X_batch.extend(X[batch_indices])
+            if i == j:
+                y_batch.extend(torch.ones(len(batch_indices)))
+            else:
+                y_batch.extend(torch.zeros(len(batch_indices)))
+            y_10_batch.extend(y[batch_indices])
+
+        X_batch = torch.stack(X_batch, dim=0)
+        y_batch = torch.stack(y_batch, dim=0).long()
+        y_10_batch = torch.stack(y_10_batch, dim=0)
+
+        if mask is not None:  # Include the mask in the batches
+            mask_batch = mask[batch_indices]
+            batches.append((X_batch, y_batch, mask_batch))
+        else:
+            batches.append((X_batch, y_batch, y_10_batch))
+    '''
+
     return batches
 
 
@@ -267,7 +301,7 @@ def get_task_names(mode, use_MLP):
 
         batches = split_into_batches(X, y, num_batches=10)
 
-        # batches = split_into_batches(X, y, num_batches=5, mode='class')      # TODO
+        # batches = split_into_batches(X, y, num_batches=10, mode='class')
 
         task_names = [batches] * 5     # make 5 copies of the list, one each for each run
 
