@@ -48,7 +48,7 @@ if __name__ == '__main__':
 
     # options: 'NLP first', 'CV first', 'mixed', 'fixed NLP first', 'fixed CV first', 'fixed mixed', 'Split CIFAR-100'
     # options: 'B:CIFAR-10', 'B:HS', 'B:SA', 'B:S', 'B:SA_2', 'B:C', 'B:HD'
-    task_names_string = 'B:SA'
+    task_names_string = 'B:CIFAR-10'
     task_names = get_task_names(task_names_string, use_MLP)
 
     data = 'test'  # 'train' or 'test'
@@ -135,6 +135,12 @@ if __name__ == '__main__':
             model = MLP(input_size, num_classes, use_PSP).to(device)
         else:
             model = MyTransformer(input_size, num_heads, num_layers, dim_feedforward, num_classes, use_PSP).to(device)
+
+        # # use MoE model
+        # input_dim = 3 * 32 * 32  # CIFAR-10 images are 3x32x32
+        # num_classes = 10  # CIFAR-10 has 10 classes
+        # num_gates = 5
+        # model = MixtureOfExperts(input_dim, num_classes, num_gates).to(device)
 
         print(model)
 
@@ -639,6 +645,7 @@ if __name__ == '__main__':
 
     '''
     # Test the accuracy if task/batch ID is not known at inference
+    all_tasks_test_data.reverse()   # reverse the list of dataloaders, so it starts from the last dataloader like a model
     if data == 'test':
         test_accuracies = []
         total_confusion_matrix = np.zeros((num_classes, num_classes))
@@ -685,8 +692,8 @@ if __name__ == '__main__':
 
             all_batches_test_outputs = np.transpose(all_batches_test_outputs, (1, 0, 2)).reshape(all_batches_test_outputs.shape[1], -1)
 
-            # reverse pairs because above we loop from the last learned task to the first one
-            all_batches_test_outputs = all_batches_test_outputs.reshape(all_batches_test_outputs.shape[0], -1, 2)[:, ::-1, :].reshape(all_batches_test_outputs.shape)
+            # # reverse pairs because above we loop from the last learned task to the first one
+            # all_batches_test_outputs = all_batches_test_outputs.reshape(all_batches_test_outputs.shape[0], -1, 2)[:, ::-1, :].reshape(all_batches_test_outputs.shape)
 
             predicted = np.argmax(all_batches_test_outputs, axis=1) % num_classes
             y_test = torch.cat(y_test, dim=0).cpu().numpy()

@@ -278,4 +278,62 @@ class AdapterLayer1to1(nn.Module):
         return self.one2one(input)
 
 
+class Expert(nn.Module):
+    def __init__(self, input_dim, output_dim):
+        super(Expert, self).__init__()
+
+        hidden_size = 100
+
+        self.layer = nn.Sequential(
+            nn.Linear(input_dim, hidden_size),
+            nn.ReLU(),
+            nn.Linear(hidden_size, output_dim)
+        )
+
+    def forward(self, x):
+        return self.layer(x)
+
+
+class GatingNetwork(nn.Module):
+    def __init__(self, input_dim, num_experts):
+        super(GatingNetwork, self).__init__()
+
+        # hidden_size = 10
+        #
+        # self.layer = nn.Sequential(
+        #     nn.Linear(input_dim, hidden_size),
+        #     nn.ReLU(),
+        #     nn.Linear(hidden_size, num_experts),
+        #     nn.Softmax(dim=1)
+        # )
+
+        self.layer = nn.Sequential(
+            nn.Linear(input_dim, num_experts),
+            nn.Softmax(dim=1)
+        )
+
+    def forward(self, x):
+        return self.layer(x)
+
+
+class MixtureOfExperts(nn.Module):
+    def __init__(self, input_dim, num_classes, num_gates):
+        super(MixtureOfExperts, self).__init__()
+        self.expert = Expert(input_dim, num_classes)
+        self.gating_network = GatingNetwork(input_dim, num_gates)
+        self.num_gates = num_gates
+        self.num_classes_per_gate = num_classes // num_gates
+
+    def forward(self, x):
+        weights = self.gating_network(x)  # weights for each group of classes
+        outputs = self.expert(x)  # outputs from the expert
+
+        # Apply gating weights to expert outputs
+        outputs_weighted = torch.zeros(outputs.shape).to(outputs.device)
+        for i in range(self.num_gates):
+            outputs_weighted[:, i * self.num_classes_per_gate:(i + 1) * self.num_classes_per_gate] = \
+                outputs[:, i * self.num_classes_per_gate:(i + 1) * self.num_classes_per_gate] * weights[:, i].unsqueeze(-1)
+
+        return outputs_weighted  # weighted output of expert
+
 
